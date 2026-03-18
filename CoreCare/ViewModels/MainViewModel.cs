@@ -6,14 +6,14 @@ namespace CoreCare.ViewModels
 {
     public partial class MainViewModel : ObservableObject
     {
-        private readonly HardwareService _hardwareService;
+        private readonly HardwareMonitorService _hardwareService;
 
         [ObservableProperty]
         private string _cpuDisplay;
 
         public MainViewModel()
         {
-            _hardwareService = new HardwareService();
+            _hardwareService = new HardwareMonitorService();
 
             // Un temporizador para actualizar la CPU cada segundo
             var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };

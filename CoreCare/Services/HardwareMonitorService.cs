@@ -4,18 +4,19 @@ using LibreHardwareMonitor.Hardware; // Si esto sale en rojo, es que falta el Nu
 
 namespace CoreCare.Services
 {
-    public class HardwareService
+    public class HardwareMonitorService
     {
         private readonly Computer _computer;
 
-        public HardwareService()
+        public HardwareMonitorService()
         {
             // Configuramos qué queremos monitorizar
             _computer = new Computer
             {
                 IsCpuEnabled = true,
                 IsGpuEnabled = true,
-                IsMemoryEnabled = true
+                IsMemoryEnabled = true,
+                IsStorageEnabled = true,
             };
 
             _computer.Open();
@@ -46,7 +47,6 @@ namespace CoreCare.Services
             }
         }
 
-        // Bonus: Para que tus compañeros vean que eres un pro, aquí tienes la RAM también
         public string GetRamUsage()
         {
             var ram = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Memory);
