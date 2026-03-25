@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using System; // Añadido para poder usar TimeSpan
+using CommunityToolkit.Mvvm.ComponentModel;
 using CoreCare.Models;
 using CoreCare.Services;
 using System.Collections.ObjectModel;
