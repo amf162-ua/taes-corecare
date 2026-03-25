@@ -13,7 +13,7 @@ namespace CoreCare
         // Comprueba si la base de datos existe y la crea si no existe,
         // así todos obtienemos la BD automáticamente
         // la primera vez que ejecutamos el proyecto. 
-        // por ahora la db solo contiene la tabla de registros de resultados del benchmark
+        // por ahora la db solo contiene la tabla de registros de resultados del benchmark y users
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);

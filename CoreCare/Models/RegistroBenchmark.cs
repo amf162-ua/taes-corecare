@@ -20,5 +20,7 @@ namespace CoreCare.Models
         public float DiskReadRate { get; set; }
         public float DiskWriteRate { get; set; }
         public float Score { get; set; }
+        public int UserId { get; set; }
+        public User User { get; set; } = null!;
     }
 }
