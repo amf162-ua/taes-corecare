@@ -3,6 +3,8 @@ using CoreCare.Models;
 using CoreCare.Services;
 using System.Collections.ObjectModel;
 using System.Windows.Threading;
+using CommunityToolkit.Mvvm.Input;
+using System.Windows; // Para el MessageBox
 
 namespace CoreCare.ViewModels
 {
@@ -43,6 +45,32 @@ namespace CoreCare.ViewModels
             foreach (var item in list)
             {
                 Processes.Add(item);
+            }
+        }
+
+        [RelayCommand]
+        public void TerminateProcess(ProcessItem process)
+        {
+            if (process == null) return;
+
+            // Confirmación de seguridad
+            var result = MessageBox.Show(
+                $"¿Seguro que quieres cerrar {process.Name}?\nSe perderán los datos no guardados.",
+                "Confirmar acción",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                bool ok = _processService.TerminateProcess(process.Id);
+                if (ok)
+                {
+                    UpdateAllData(); // Refrescamos la lista inmediatamente
+                }
+                else
+                {
+                    MessageBox.Show("No se pudo cerrar. Puede que no tengas permisos o el proceso ya haya terminado.");
+                }
             }
         }
     }

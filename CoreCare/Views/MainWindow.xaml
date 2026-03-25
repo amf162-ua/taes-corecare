@@ -15,15 +15,51 @@
         </StackPanel>
 
         <DataGrid Grid.Row="1" 
-                  ItemsSource="{Binding Processes}" 
-                  AutoGenerateColumns="False" 
-                  Margin="10" 
-                  IsReadOnly="True"
-                  Background="White">
+          ItemsSource="{Binding Processes}" 
+          AutoGenerateColumns="False" 
+          Margin="10" 
+          IsReadOnly="True"
+          Background="White"
+          RowHeaderWidth="0"
+          GridLinesVisibility="None"
+          BorderThickness="0">
+
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsHighConsumption}" Value="True">
+                            <Setter Property="Background" Value="#FFEBEB"/>
+                            <Setter Property="Foreground" Value="#C62828"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Aplicación" Binding="{Binding Description}" Width="*"/>
-                <DataGridTextColumn Header="RAM (MB)" Binding="{Binding RamUsageMB}" Width="100"/>
+                <DataGridTextColumn Header="RAM (MB)" Binding="{Binding RamUsageMB, StringFormat=\{0:N0\}}" Width="100"/>
                 <DataGridTextColumn Header="Proceso" Binding="{Binding Name}" Width="150"/>
+
+                <DataGridTemplateColumn Width="100">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="Finalizar" 
+                            Command="{Binding DataContext.TerminateProcessCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                            CommandParameter="{Binding}"
+                            Background="#FF5252" 
+                            Foreground="White" 
+                            FontSize="10" 
+                            Padding="5,2"
+                            BorderThickness="0">
+                                <Button.Resources>
+                                    <Style TargetType="Border">
+                                        <Setter Property="CornerRadius" Value="3"/>
+                                    </Style>
+                                </Button.Resources>
+                            </Button>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
             </DataGrid.Columns>
         </DataGrid>
     </Grid>
