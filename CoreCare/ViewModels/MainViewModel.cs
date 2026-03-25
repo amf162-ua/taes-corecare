@@ -1,11 +1,11 @@
-﻿using System; // Añadido para poder usar TimeSpan
+﻿using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CoreCare.Models;
 using CoreCare.Services;
 using System.Collections.ObjectModel;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Input;
-using System.Windows; // Para el MessageBox
+using System.Windows;
 
 namespace CoreCare.ViewModels
 {
@@ -17,7 +17,6 @@ namespace CoreCare.ViewModels
         [ObservableProperty]
         private string _cpuDisplay;
 
-        // Esta lista es la que "leerá" el DataGrid en el XAML
         public ObservableCollection<ProcessItem> Processes { get; set; } = new();
 
         public MainViewModel()
@@ -25,23 +24,24 @@ namespace CoreCare.ViewModels
             _hardwareService = new HardwareMonitorService();
             _processService = new ProcessService();
 
-            // Actualizamos cada 2 segundos para no estresar el PC
             var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
             timer.Tick += (s, e) => UpdateAllData();
             timer.Start();
 
-            UpdateAllData(); // Primera carga al abrir
+            UpdateAllData();
         }
 
         private void UpdateAllData()
         {
-            // 1. Actualizamos el texto de la CPU
-            CpuDisplay = _hardwareService.GetCpuLoad();
+            // SOLUCIÓN 2: Obligatorio pedirle a la placa base que lea los sensores en este milisegundo
+            _hardwareService.UpdateHardware();
 
-            // 2. Obtenemos los procesos del servicio
+            // SOLUCIÓN 1: Obtenemos el float, lo redondeamos y lo convertimos a string con el símbolo "%"
+            float load = _hardwareService.GetCpuLoad();
+            CpuDisplay = $"{Math.Round(load, 1)} %";
+
             var list = _processService.GetActiveProcesses();
 
-            // 3. Refrescamos la colección de la pantalla
             Processes.Clear();
             foreach (var item in list)
             {
@@ -54,7 +54,6 @@ namespace CoreCare.ViewModels
         {
             if (process == null) return;
 
-            // Confirmación de seguridad
             var result = MessageBox.Show(
                 $"¿Seguro que quieres cerrar {process.Name}?\nSe perderán los datos no guardados.",
                 "Confirmar acción",
@@ -63,10 +62,12 @@ namespace CoreCare.ViewModels
 
             if (result == MessageBoxResult.Yes)
             {
-                bool ok = _processService.TerminateProcess(process.Id);
+                // SOLUCIÓN 3: El método en ProcessService se llama KillProcess, no TerminateProcess
+                bool ok = _processService.KillProcess(process.Id);
+
                 if (ok)
                 {
-                    UpdateAllData(); // Refrescamos la lista inmediatamente
+                    UpdateAllData();
                 }
                 else
                 {
@@ -76,4 +77,3 @@ namespace CoreCare.ViewModels
         }
     }
 }
-
