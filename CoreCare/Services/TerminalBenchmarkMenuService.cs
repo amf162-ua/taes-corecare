@@ -1,7 +1,9 @@
 using System;
+using System.Linq;
 using System.Runtime.InteropServices;
 using CoreCare.Models;
 using CoreCare.Orchestrators;
+using CoreCare.Data;
 
 namespace CoreCare.Services
 {
@@ -69,6 +71,19 @@ namespace CoreCare.Services
                     Console.WriteLine("Pulsa una tecla para volver al menu...");
                     Console.ReadKey(intercept: true);
                     continue;
+                }
+
+                try
+                {
+                    using var db = new CoreCareDbContext();
+                    registro.UserId = GetOrCreateSystemUserId(db);
+                    db.RegistrosBenchmark.Add(registro);
+                    db.SaveChanges();
+                    Console.WriteLine($"\nResultado guardado en la base de datos con Id {registro.Id}.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"\nNo se pudo guardar el resultado: {ex.GetBaseException().Message}");
                 }
 
                 PrintSummary(registro, options);
@@ -163,6 +178,32 @@ namespace CoreCare.Services
             }
 
             Console.WriteLine("-------------------------------------------");
+        }
+
+        private static int GetOrCreateSystemUserId(CoreCareDbContext db)
+        {
+            var existingUser = db.Users.FirstOrDefault(user => user.IsActive);
+
+            if (existingUser != null)
+            {
+                return existingUser.Id;
+            }
+
+            var systemUser = new User
+            {
+                name = "prueba",
+                username = "prueba",
+                email = "prueba@corecare.local",
+                password = string.Empty,
+                createdAt = DateTime.UtcNow,
+                IsActive = true,
+                Plan = TipoPlan.Basico
+            };
+
+            db.Users.Add(systemUser);
+            db.SaveChanges();
+
+            return systemUser.Id;
         }
     }
 }

@@ -19,6 +19,12 @@ namespace CoreCare
         {
             base.OnStartup(e);
 
+            // Asegurarse de que la base de datos se crea al iniciar la aplicación
+            using (var db = new CoreCareDbContext())
+            {
+                db.Database.EnsureCreated();
+            }
+
             bool runTerminalMenu = !e.Args.Contains("--ui", StringComparer.OrdinalIgnoreCase);
 
             if (runTerminalMenu)
@@ -26,12 +32,6 @@ namespace CoreCare
                 TerminalBenchmarkMenuService.RunInteractiveMenu();
                 Shutdown();
                 return;
-            }
-
-            // Asegurarse de que la base de datos se crea al iniciar la aplicación
-            using (var db = new CoreCareDbContext())
-            {
-                db.Database.EnsureCreated();
             }
         }
     }
