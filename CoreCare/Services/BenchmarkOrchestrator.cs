@@ -20,26 +20,85 @@ namespace CoreCare.Orchestrators
         public async Task<RegistroBenchmark> RunBenchmarkAsync(ScanOptions options, int durationSeconds)
         {
             var result = new BenchmarkResult();
+            var startTime = DateTime.Now;
 
-            //LECTURA 
+            var cpuTemps = new System.Collections.Generic.List<float>();
+            var cpuLoads = new System.Collections.Generic.List<float>();
+            var cpuClocks = new System.Collections.Generic.List<float>();
+            var gpuTemps = new System.Collections.Generic.List<float>();
+            var gpuLoads = new System.Collections.Generic.List<float>();
+            var ramUsed = new System.Collections.Generic.List<float>();
+            var ramLoads = new System.Collections.Generic.List<float>();
+            var diskLoads = new System.Collections.Generic.List<float>();
+            var diskReads = new System.Collections.Generic.List<float>();
+            var diskWrites = new System.Collections.Generic.List<float>();
+
+            static void AddReading(
+                System.Collections.Generic.List<SensorReading> bucket,
+                ComponentType component,
+                SensorType type,
+                string name,
+                float value)
+            {
+                bucket.Add(new SensorReading
+                {
+                    Component = component,
+                    Type = type,
+                    Name = name,
+                    Value = value,
+                    TimeStamp = DateTime.Now
+                });
+            }
+
+            // Baseline readings
             for (int i = 0; i < 3; i++)
             {
                 _monitor.UpdateHardware();
-                var cpuTempData = _monitor.GetCpuTemperature();
 
-                result.BaselineReadings.Add(new SensorReading
+                if (options.ScanCPU)
                 {
-                    Component = ComponentType.Cpu,
-                    Type = SensorType.Temperature,
-                    Name = "CPU Core",
-                    Value = cpuTempData.Value,
-                    TimeStamp = DateTimeOffset.FromUnixTimeMilliseconds(cpuTempData.Timestamp).DateTime
-                });
+                    var cpuTempData = _monitor.GetCpuTemperature();
+                    var cpuLoad = _monitor.GetCpuLoad();
+                    var cpuClock = _monitor.GetCpuClockGHz();
+
+                    AddReading(result.BaselineReadings, ComponentType.Cpu, SensorType.Temperature, "CPU Temp", cpuTempData.Value);
+                    AddReading(result.BaselineReadings, ComponentType.Cpu, SensorType.Load, "CPU Load", cpuLoad);
+                    AddReading(result.BaselineReadings, ComponentType.Cpu, SensorType.Clock, "CPU Clock", cpuClock);
+                }
+
+                if (options.ScanGPU)
+                {
+                    var gpuTemp = _monitor.GetGpuTemperature();
+                    var gpuLoad = _monitor.GetGpuLoad();
+
+                    AddReading(result.BaselineReadings, ComponentType.Gpu, SensorType.Temperature, "GPU Temp", gpuTemp);
+                    AddReading(result.BaselineReadings, ComponentType.Gpu, SensorType.Load, "GPU Load", gpuLoad);
+                }
+
+                if (options.ScanRAM)
+                {
+                    var used = _monitor.GetRamUsageGb();
+                    var load = _monitor.GetRamLoad();
+
+                    AddReading(result.BaselineReadings, ComponentType.Ram, SensorType.Data, "RAM Used GB", used);
+                    AddReading(result.BaselineReadings, ComponentType.Ram, SensorType.Load, "RAM Load", load);
+                }
+
+                if (options.ScanDisk)
+                {
+                    var diskLoad = _monitor.GetDiskLoad();
+                    var readRate = _monitor.GetDiskReadRateMb();
+                    var writeRate = _monitor.GetDiskWriteRateMb();
+
+                    AddReading(result.BaselineReadings, ComponentType.Disk, SensorType.Load, "Disk Load", diskLoad);
+                    AddReading(result.BaselineReadings, ComponentType.Disk, SensorType.Throughput, "Disk Read MB/s", readRate);
+                    AddReading(result.BaselineReadings, ComponentType.Disk, SensorType.Throughput, "Disk Write MB/s", writeRate);
+                }
 
                 await Task.Delay(1000);
             }
 
-            //ESTRÉS
+            // Stress phase
             if (options.ScanCPU) _stressWorker.RunCpuStress(durationSeconds);
             if (options.ScanDisk) _stressWorker.RunDiskStress(durationSeconds);
             if (options.ScanRAM) _stressWorker.RunRamStress(durationSeconds);
@@ -49,34 +108,95 @@ namespace CoreCare.Orchestrators
             while (DateTime.Now < endTime)
             {
                 _monitor.UpdateHardware();
-                var cpuTempData = _monitor.GetCpuTemperature();
-                float cpuLoad = _monitor.GetCpuLoad();
 
-                result.UnderLoadReadings.Add(new SensorReading
+                if (options.ScanCPU)
                 {
-                    Component = ComponentType.Cpu,
-                    Type = SensorType.Temperature,
-                    Name = "CPU Core",
-                    Value = cpuTempData.Value,
-                    TimeStamp = DateTimeOffset.FromUnixTimeMilliseconds(cpuTempData.Timestamp).DateTime
-                });
+                    var cpuTempData = _monitor.GetCpuTemperature();
+                    var cpuLoad = _monitor.GetCpuLoad();
+                    var cpuClock = _monitor.GetCpuClockGHz();
+
+                    cpuTemps.Add(cpuTempData.Value);
+                    cpuLoads.Add(cpuLoad);
+                    cpuClocks.Add(cpuClock);
+
+                    AddReading(result.UnderLoadReadings, ComponentType.Cpu, SensorType.Temperature, "CPU Temp", cpuTempData.Value);
+                    AddReading(result.UnderLoadReadings, ComponentType.Cpu, SensorType.Load, "CPU Load", cpuLoad);
+                    AddReading(result.UnderLoadReadings, ComponentType.Cpu, SensorType.Clock, "CPU Clock", cpuClock);
+                }
+
+                if (options.ScanGPU)
+                {
+                    var gpuTemp = _monitor.GetGpuTemperature();
+                    var gpuLoad = _monitor.GetGpuLoad();
+
+                    gpuTemps.Add(gpuTemp);
+                    gpuLoads.Add(gpuLoad);
+
+                    AddReading(result.UnderLoadReadings, ComponentType.Gpu, SensorType.Temperature, "GPU Temp", gpuTemp);
+                    AddReading(result.UnderLoadReadings, ComponentType.Gpu, SensorType.Load, "GPU Load", gpuLoad);
+                }
+
+                if (options.ScanRAM)
+                {
+                    var used = _monitor.GetRamUsageGb();
+                    var load = _monitor.GetRamLoad();
+
+                    ramUsed.Add(used);
+                    ramLoads.Add(load);
+
+                    AddReading(result.UnderLoadReadings, ComponentType.Ram, SensorType.Data, "RAM Used GB", used);
+                    AddReading(result.UnderLoadReadings, ComponentType.Ram, SensorType.Load, "RAM Load", load);
+                }
+
+                if (options.ScanDisk)
+                {
+                    var diskLoad = _monitor.GetDiskLoad();
+                    var readRate = _monitor.GetDiskReadRateMb();
+                    var writeRate = _monitor.GetDiskWriteRateMb();
+
+                    diskLoads.Add(diskLoad);
+                    diskReads.Add(readRate);
+                    diskWrites.Add(writeRate);
+
+                    AddReading(result.UnderLoadReadings, ComponentType.Disk, SensorType.Load, "Disk Load", diskLoad);
+                    AddReading(result.UnderLoadReadings, ComponentType.Disk, SensorType.Throughput, "Disk Read MB/s", readRate);
+                    AddReading(result.UnderLoadReadings, ComponentType.Disk, SensorType.Throughput, "Disk Write MB/s", writeRate);
+                }
 
                 await Task.Delay(1000);
             }
 
-            // CÁLCULO DE RESULTADOS
-            result.PeakCpuTemp = (float)result.UnderLoadReadings.Max(r => r.Value);
-            result.AvgCpuLoad = _monitor.GetCpuLoad();
-            float avgTemp = (float)result.UnderLoadReadings.Average(r => r.Value);
+            _stressWorker.Stop();
 
-            result.Score = 10000 - (result.PeakCpuTemp * 20);
+            result.PeakCpuTemp = cpuTemps.Any() ? cpuTemps.Max() : 0f;
+            result.PeakGpuTemp = gpuTemps.Any() ? gpuTemps.Max() : 0f;
+            result.AvgCpuLoad = cpuLoads.Any() ? cpuLoads.Average() : 0f;
+            result.AvgRamLoad = ramLoads.Any() ? ramLoads.Average() : 0f;
+            result.AvgDiskLoad = diskLoads.Any() ? diskLoads.Average() : 0f;
+            result.Duration = DateTime.Now - startTime;
+
+            float score = 10000f;
+            score -= result.PeakCpuTemp * 20f;
+            score -= result.AvgCpuLoad * 5f;
+            score -= result.PeakGpuTemp * 10f;
+            score -= result.AvgRamLoad * 5f;
+            score -= result.AvgDiskLoad * 3f;
+            result.Score = Math.Max(0f, score);
 
             // Construcción del registro final para la base de datos
             var registroFinal = new RegistroBenchmark
             {
                 Timestamp = DateTime.Now,
-                CpuTemp = avgTemp,
+                CpuTemp = cpuTemps.Any() ? cpuTemps.Average() : 0f,
                 CpuLoad = result.AvgCpuLoad,
+                CpuClock = cpuClocks.Any() ? cpuClocks.Average() : 0f,
+                GpuTemp = gpuTemps.Any() ? gpuTemps.Average() : 0f,
+                GpuLoad = gpuLoads.Any() ? gpuLoads.Average() : 0f,
+                RamUsed = ramUsed.Any() ? ramUsed.Average() : 0f,
+                RamLoad = result.AvgRamLoad,
+                DiskLoad = result.AvgDiskLoad,
+                DiskReadRate = diskReads.Any() ? diskReads.Average() : 0f,
+                DiskWriteRate = diskWrites.Any() ? diskWrites.Average() : 0f,
                 Score = result.Score
             };
 
