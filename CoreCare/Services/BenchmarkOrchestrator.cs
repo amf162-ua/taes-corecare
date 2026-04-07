@@ -175,13 +175,31 @@ namespace CoreCare.Orchestrators
             result.AvgDiskLoad = diskLoads.Any() ? diskLoads.Average() : 0f;
             result.Duration = DateTime.Now - startTime;
 
-            float score = 10000f;
-            score -= result.PeakCpuTemp * 20f;
-            score -= result.AvgCpuLoad * 5f;
-            score -= result.PeakGpuTemp * 10f;
-            score -= result.AvgRamLoad * 5f;
-            score -= result.AvgDiskLoad * 3f;
-            result.Score = Math.Max(0f, score);
+            float score = 10f;
+
+            if (options.ScanCPU)
+            {
+                score -= Math.Min(3f, result.PeakCpuTemp / 100f * 3f);
+                score -= Math.Min(2f, result.AvgCpuLoad / 100f * 2f);
+            }
+
+            if (options.ScanGPU)
+            {
+                score -= Math.Min(2f, result.PeakGpuTemp / 100f * 2f);
+                score -= Math.Min(1.5f, gpuLoads.Any() ? gpuLoads.Average() / 100f * 1.5f : 0f);
+            }
+
+            if (options.ScanRAM)
+            {
+                score -= Math.Min(2f, result.AvgRamLoad / 100f * 2f);
+            }
+
+            if (options.ScanDisk)
+            {
+                score -= Math.Min(1.5f, result.AvgDiskLoad / 100f * 1.5f);
+            }
+
+            result.Score = Math.Max(0f, Math.Min(10f, score));
 
             // Construcción del registro final para la base de datos
             var registroFinal = new RegistroBenchmark

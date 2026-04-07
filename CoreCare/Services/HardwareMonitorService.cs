@@ -80,13 +80,14 @@ namespace CoreCare.Services
 
             var coreClocks = cpu?.Sensors
                 .Where(s => s.SensorType == SensorType.Clock && s.Name.Contains("Core"))
+                .Where(s => s.Value.HasValue)
                 .ToList();
 
             float currentMhz = 0f;
 
             if (coreClocks != null && coreClocks.Any())
             {
-                currentMhz = (float)coreClocks.Average(c => c.Value);
+                currentMhz = coreClocks.Average(c => c.Value!.Value);
             }
 
             if (currentMhz == 0f)

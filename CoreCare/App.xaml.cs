@@ -2,6 +2,7 @@
 using System.Data;
 using System.Windows;
 using CoreCare.Data;
+using CoreCare.Services;
 
 namespace CoreCare
 {
@@ -17,6 +18,16 @@ namespace CoreCare
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+
+            bool runTerminalMenu = !e.Args.Contains("--ui", StringComparer.OrdinalIgnoreCase);
+
+            if (runTerminalMenu)
+            {
+                TerminalBenchmarkMenuService.RunInteractiveMenu();
+                Shutdown();
+                return;
+            }
+
             // Asegurarse de que la base de datos se crea al iniciar la aplicación
             using (var db = new CoreCareDbContext())
             {
