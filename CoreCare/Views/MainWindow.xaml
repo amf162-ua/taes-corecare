@@ -1,12 +1,66 @@
 ﻿<Window x:Class="CoreCare.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:CoreCare"
-        mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        Title="CoreCare - Monitor de Sistema" Height="600" Width="800">
 
+    <Grid Background="#F5F5F7">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="20">
+            <TextBlock Text="{Binding CpuDisplay}" FontSize="50" FontWeight="Bold" Foreground="#2196F3" HorizontalAlignment="Center"/>
+            <TextBlock Text="Uso de Procesador" HorizontalAlignment="Center" Foreground="Gray"/>
+        </StackPanel>
+
+        <DataGrid Grid.Row="1" 
+          ItemsSource="{Binding Processes}" 
+          AutoGenerateColumns="False" 
+          Margin="10" 
+          IsReadOnly="True"
+          Background="White"
+          RowHeaderWidth="0"
+          GridLinesVisibility="None"
+          BorderThickness="0">
+
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsHighConsumption}" Value="True">
+                            <Setter Property="Background" Value="#FFEBEB"/>
+                            <Setter Property="Foreground" Value="#C62828"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Aplicación" Binding="{Binding Description}" Width="*"/>
+                <DataGridTextColumn Header="RAM (MB)" Binding="{Binding RamUsageMB, StringFormat=\{0:N0\}}" Width="100"/>
+                <DataGridTextColumn Header="Proceso" Binding="{Binding Name}" Width="150"/>
+
+                <DataGridTemplateColumn Width="100">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="Finalizar" 
+                            Command="{Binding DataContext.TerminateProcessCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                            CommandParameter="{Binding}"
+                            Background="#FF5252" 
+                            Foreground="White" 
+                            FontSize="10" 
+                            Padding="5,2"
+                            BorderThickness="0">
+                                <Button.Resources>
+                                    <Style TargetType="Border">
+                                        <Setter Property="CornerRadius" Value="3"/>
+                                    </Style>
+                                </Button.Resources>
+                            </Button>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
     </Grid>
 </Window>
