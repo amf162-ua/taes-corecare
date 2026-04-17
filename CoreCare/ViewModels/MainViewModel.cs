@@ -125,12 +125,18 @@ namespace CoreCare.ViewModels
 
                 var document = new ReportDocument(data);
 
-                string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                string filePath = System.IO.Path.Combine(desktopPath, $"Informe_CoreCare_{DateTime.Now:yyyyMMdd_HHmmss}.pdf");
+                var saveDialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    FileName = $"Informe_CoreCare_{DateTime.Now:yyyyMMdd_HHmmss}",
+                    DefaultExt = ".pdf",
+                    Filter = "PDF files (*.pdf)|*.pdf"
+                };
 
-                document.GeneratePdf(filePath);
-
-                MessageBox.Show($"¡Informe generado con éxito!\nGuardado en: {filePath}", "PDF Generado", MessageBoxButton.OK, MessageBoxImage.Information);
+                if (saveDialog.ShowDialog() == true)
+                {
+                    document.GeneratePdf(saveDialog.FileName);
+                    MessageBox.Show($"¡Informe generado con éxito!\nGuardado en: {saveDialog.FileName}", "PDF Generado", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
             }
             catch (Exception ex)
             {
