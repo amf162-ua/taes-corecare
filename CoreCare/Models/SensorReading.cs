@@ -27,10 +27,15 @@ namespace CoreCare.Models
     }
     public class SensorReading
     {
+        public int Id { get; set; }
         public ComponentType Component { get; set; }
         public SensorType Type { get; set; }
         public string Name { get; set; }
         public double Value { get; set; }
         public DateTime TimeStamp { get; set; }
+
+        // Referencia a RegistroBenchmark (opcional, solo para lecturas persistidas)
+        public int? RegistroBenchmarkId { get; set; }
+        public RegistroBenchmark? RegistroBenchmark { get; set; }
     }
 }
