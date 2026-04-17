@@ -4,11 +4,12 @@ using System;
 using System.IO;
 namespace CoreCare.Data
 {
-    // por ahora solo contiene la tabla donde se guarda los resultados del benchark y users
+    // Persiste usuarios, resultados de benchmark y las lecturas detalladas de sensores
     public class CoreCareDbContext : DbContext
     {
         public DbSet<User> Users { get; set; }
         public DbSet<RegistroBenchmark> RegistrosBenchmark { get; set; }
+        public DbSet<SensorReading> SensorReadings { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
             => options.UseSqlite($"Data Source={ResolveDatabasePath()}");
