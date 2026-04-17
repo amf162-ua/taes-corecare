@@ -10,6 +10,9 @@ namespace CoreCare.Models
         public string ClientName { get; set; } = string.Empty;
         public DateTime ReportDate { get; set; }
 
+        // Especificaciones del hardware
+        public SystemSpecs SystemSpecs { get; set; } = new SystemSpecs();
+
         // Datos del sistema analizado
         public SystemTelemetryMock TelemetryData { get; set; } = new SystemTelemetryMock();
 

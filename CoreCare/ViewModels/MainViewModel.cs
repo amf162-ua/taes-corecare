@@ -15,6 +15,7 @@ namespace CoreCare.ViewModels
         private readonly HardwareMonitorService _hardwareService;
         private readonly ProcessService _processService;
         private readonly GeminiAIService _geminiService;
+        private readonly SystemSpecsService _systemSpecsService;
 
         [ObservableProperty]
         private string _cpuDisplay;
@@ -26,6 +27,7 @@ namespace CoreCare.ViewModels
             _hardwareService = new HardwareMonitorService();
             _processService = new ProcessService();
             _geminiService = new GeminiAIService();
+            _systemSpecsService = new SystemSpecsService();
 
             var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
             timer.Tick += (s, e) => UpdateAllData();
@@ -108,11 +110,15 @@ namespace CoreCare.ViewModels
 
                 var recommendations = new System.Collections.Generic.List<string> { aiResponse };
 
+                var systemSpecs = _systemSpecsService.GetSystemSpecs();
+                systemSpecs.RamTotalGb = ramTotal;
+
                 var data = new ReportData
                 {
                     CompanyName = "TechRepairs S.L.",
                     ClientName = "Jesús Pérez",
                     ReportDate = DateTime.Now,
+                    SystemSpecs = systemSpecs,
                     Recommendations = recommendations,
                     TelemetryData = telemetryData
                 };

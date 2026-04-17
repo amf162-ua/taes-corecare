@@ -85,11 +85,14 @@ namespace CoreCare.Services
             {
                 column.Spacing(20);
 
+                column.Item().Text("Especificaciones del Sistema").FontSize(14).SemiBold();
+                column.Item().Element(ComposeSpecs);
+
                 column.Item().Text("Resultados del Benchmark (Telemetría)").FontSize(14).SemiBold();
                 column.Item().Element(ComposeTable);
 
                 column.Item().Text("Recomendaciones de IA para el Cliente").FontSize(14).SemiBold();
-                
+
                 if (_data.Recommendations != null && _data.Recommendations.Count > 0)
                 {
                     foreach (var rec in _data.Recommendations)
@@ -106,6 +109,51 @@ namespace CoreCare.Services
                 {
                     column.Item().Text("No se generaron recomendaciones para este dispositivo.").Italic().FontColor(Colors.Grey.Medium);
                 }
+            });
+        }
+
+        private void ComposeSpecs(IContainer container)
+        {
+            container.Table(table =>
+            {
+                table.ColumnsDefinition(columns =>
+                {
+                    columns.RelativeColumn(2);
+                    columns.RelativeColumn(3);
+                });
+
+                table.Header(header =>
+                {
+                    header.Cell().Background(Colors.Blue.Darken2).Padding(5).Text("Componente").FontColor(Colors.White).SemiBold();
+                    header.Cell().Background(Colors.Blue.Darken2).Padding(5).Text("Especificación").FontColor(Colors.White).SemiBold();
+                });
+
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("Procesador");
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(_data.SystemSpecs.CpuName);
+
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("Núcleos / Hilos");
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.SystemSpecs.CpuCores} núcleos / {_data.SystemSpecs.CpuThreads} hilos");
+
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("Frecuencia máx.");
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(_data.SystemSpecs.CpuMaxClockSpeed);
+
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("Caché L2 / L3");
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.SystemSpecs.CpuCacheL2} / {_data.SystemSpecs.CpuCacheL3}");
+
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("Gráfica");
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(_data.SystemSpecs.GpuName);
+
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("VRAM");
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(_data.SystemSpecs.GpuVram);
+
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("Driver GPU");
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(_data.SystemSpecs.GpuDriverVersion);
+
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("RAM Total");
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.SystemSpecs.RamTotalGb:F1} GB");
+
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("Almacenamiento");
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.SystemSpecs.DiskModel} ({_data.SystemSpecs.DiskSize})");
             });
         }
 
