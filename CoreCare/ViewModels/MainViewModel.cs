@@ -2,6 +2,7 @@ using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CoreCare.Models;
 using CoreCare.Services;
+using CoreCare.Views;
 using System.Collections.ObjectModel;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Input;
@@ -20,10 +21,16 @@ namespace CoreCare.ViewModels
         [ObservableProperty]
         private string _cpuDisplay;
 
+        [ObservableProperty]
+        private bool _isBusy;
+
+        private System.Windows.Threading.Dispatcher _dispatcher;
+
         public ObservableCollection<ProcessItem> Processes { get; set; } = new();
 
         public MainViewModel()
         {
+            _dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
             _hardwareService = new HardwareMonitorService();
             _processService = new ProcessService();
             _geminiService = new GeminiAIService();
@@ -84,8 +91,12 @@ namespace CoreCare.ViewModels
         [RelayCommand]
         public async Task GenerateReportAsync()
         {
+            LoadingWindow? loadingWindow = null;
             try
             {
+                loadingWindow = new LoadingWindow();
+                loadingWindow.Show();
+
                 _hardwareService.UpdateHardware();
                 _hardwareService.UpdateHardware();
 
@@ -124,6 +135,7 @@ namespace CoreCare.ViewModels
                 };
 
                 var document = new ReportDocument(data);
+                loadingWindow.Close();
 
                 var saveDialog = new Microsoft.Win32.SaveFileDialog
                 {
@@ -141,6 +153,10 @@ namespace CoreCare.ViewModels
             catch (Exception ex)
             {
                 MessageBox.Show($"Error al generar el PDF: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                loadingWindow?.Close();
             }
         }
     }
