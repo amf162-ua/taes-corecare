@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
@@ -121,16 +121,22 @@ namespace CoreCare.Services
         public TelemetryData GetCpuTemperature()
         {
             var cpu = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);
-            var sensor = cpu?.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Temperature && s.Value > 0);
+            var sensor = cpu?.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Temperature && s.Name.Contains("Core") && s.Value > 0);
             float rawTemp = sensor?.Value ?? GetWmiCpuTemperature();
 
-            _cpuTempWindow[_tempWindowIndex] = rawTemp;
-            _tempWindowIndex = (_tempWindowIndex + 1) % _windowLimit;
-            if (_tempReadingsCount < _windowLimit) _tempReadingsCount++;
+            if (rawTemp > 0)
+            {
+                _cpuTempWindow[_tempWindowIndex] = rawTemp;
+                _tempWindowIndex = (_tempWindowIndex + 1) % _windowLimit;
+                if (_tempReadingsCount < _windowLimit) _tempReadingsCount++;
+            }
+
+            var validTemps = _cpuTempWindow.Take(_tempReadingsCount).Where(t => t > 0);
+            float avgTemp = validTemps.Any() ? validTemps.Average() : rawTemp;
 
             return new TelemetryData
             {
-                Value = _cpuTempWindow.Take(_tempReadingsCount).Average(),
+                Value = avgTemp,
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
             };
         }

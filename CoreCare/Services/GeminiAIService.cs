@@ -14,7 +14,7 @@ namespace CoreCare.Services
 
         private readonly string ApiKey;
 
-        private const string ApiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+        private const string ApiUrl = "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent";
 
         public GeminiAIService()
         {
@@ -26,16 +26,29 @@ namespace CoreCare.Services
         {
             string? key = null;
 
-            string envFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", ".env");
-            if (File.Exists(envFilePath))
+            string[] possiblePaths = new string[]
             {
-                foreach (var line in File.ReadAllLines(envFilePath))
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", ".env"),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", ".env"),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".env"),
+                Path.Combine(Directory.GetCurrentDirectory(), ".env")
+            };
+
+            foreach (var envFilePath in possiblePaths)
+            {
+                var fullPath = Path.GetFullPath(envFilePath);
+                if (File.Exists(fullPath))
                 {
-                    if (line.StartsWith("GEMINI_API_KEY="))
+                    foreach (var line in File.ReadAllLines(fullPath))
                     {
-                        key = line.Substring("GEMINI_API_KEY=".Length).Trim();
-                        break;
+                        var trimmed = line.Trim();
+                        if (trimmed.StartsWith("GEMINI_API_KEY="))
+                        {
+                            key = trimmed.Substring("GEMINI_API_KEY=".Length).Trim();
+                            if (!string.IsNullOrEmpty(key)) break;
+                        }
                     }
+                    if (key != null) break;
                 }
             }
 
@@ -71,11 +84,12 @@ namespace CoreCare.Services
             string jsonPayload = JsonSerializer.Serialize(payload);
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-            // Make the request
-            string requestUrl = $"{ApiUrl}?key={ApiKey}";
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Add("x-goog-api-key", ApiKey);
+
+            string requestUrl = ApiUrl;
             HttpResponseMessage response = await _httpClient.PostAsync(requestUrl, content);
 
-            // Read and return the response
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content.ReadAsStringAsync();

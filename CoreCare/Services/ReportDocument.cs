@@ -131,14 +131,17 @@ namespace CoreCare.Services
                 table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("Uso CPU (%)");
                 table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.TelemetryData.CpuUsagePercent:F1}%");
 
-                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("Temperatura CPU (°C)");
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("Uso GPU (%)");
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.TelemetryData.DiskUsagePercent:F1}%");
+
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("Temperatura GPU (°C)");
                 table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.TelemetryData.CpuTemperatureC:F1}°C");
 
                 table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("RAM Utilizada / Total");
                 table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.TelemetryData.RamUsedGb:F1}GB / {_data.TelemetryData.RamTotalGb:F1}GB");
 
-                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("Tipo de Disco y Uso");
-                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.TelemetryData.DiskType} ({_data.TelemetryData.DiskUsagePercent}%)");
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("Tipo de Disco");
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.TelemetryData.DiskType}");
             });
         }
 

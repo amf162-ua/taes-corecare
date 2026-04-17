@@ -87,9 +87,9 @@ namespace CoreCare.ViewModels
                 _hardwareService.UpdateHardware();
                 _hardwareService.UpdateHardware();
 
-                var cpuTemp = _hardwareService.GetCpuTemperature();
                 float cpuLoad = (float)Math.Round(_hardwareService.GetCpuLoad(), 1, MidpointRounding.ToEven);
-                float cpuTempVal = (float)Math.Round(cpuTemp.Value, 1);
+                float gpuLoad = (float)Math.Round(_hardwareService.GetGpuLoad(), 1, MidpointRounding.ToEven);
+                float gpuTemp = (float)Math.Round(_hardwareService.GetGpuTemperature(), 1, MidpointRounding.ToEven);
                 float ramUsed = (float)Math.Round(_hardwareService.GetRamUsageGb(), 1);
                 float ramAvailable = (float)Math.Round(_hardwareService.GetRamAvailableGb(), 1);
                 float ramTotal = (float)Math.Round(ramUsed + ramAvailable, 1);
@@ -97,11 +97,11 @@ namespace CoreCare.ViewModels
                 var telemetryData = new SystemTelemetryMock
                 {
                     CpuUsagePercent = cpuLoad,
-                    CpuTemperatureC = cpuTempVal,
+                    CpuTemperatureC = gpuTemp,
                     RamTotalGb = ramTotal,
                     RamUsedGb = ramUsed,
                     DiskType = "[PLACEHOLDER]",
-                    DiskUsagePercent = 0
+                    DiskUsagePercent = gpuLoad
                 };
 
                 var aiResponse = await _geminiService.GetRecommendationsAsync(telemetryData);
