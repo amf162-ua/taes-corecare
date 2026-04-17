@@ -19,20 +19,24 @@ namespace CoreCare
         {
             base.OnStartup(e);
 
+            // Aceptar licencia comunitaria y gratuita de QuestPDF globalmente en toda la aplicación
+            QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
             // Asegurarse de que la base de datos se crea al iniciar la aplicación
             using (var db = new CoreCareDbContext())
             {
                 db.Database.EnsureCreated();
             }
 
-            bool runTerminalMenu = !e.Args.Contains("--ui", StringComparer.OrdinalIgnoreCase);
+            // Opcional para pruebas: Si queréis ejecutar el menú CLI por consola en lugar de la UI
+            // bool runTerminalMenu = e.Args.Contains("--cli", StringComparer.OrdinalIgnoreCase);
 
-            if (runTerminalMenu)
-            {
-                TerminalBenchmarkMenuService.RunInteractiveMenu();
-                Shutdown();
-                return;
-            }
+            // if (runTerminalMenu)
+            // {
+            //     TerminalBenchmarkMenuService.RunInteractiveMenu();
+            //     Shutdown();
+            //     return;
+            // }
         }
     }
 
