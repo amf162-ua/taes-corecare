@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using CoreCare.Models;
 using QuestPDF.Fluent;
@@ -129,13 +129,13 @@ namespace CoreCare.Services
 
                 // Filas de datos usando TelemetryMock
                 table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("Uso CPU (%)");
-                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.TelemetryData.CpuUsagePercent}%");
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.TelemetryData.CpuUsagePercent:F1}%");
 
                 table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("Temperatura CPU (°C)");
-                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.TelemetryData.CpuTemperatureC}°C");
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.TelemetryData.CpuTemperatureC:F1}°C");
 
                 table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("RAM Utilizada / Total");
-                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.TelemetryData.RamUsedGb}GB / {_data.TelemetryData.RamTotalGb}GB");
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.TelemetryData.RamUsedGb:F1}GB / {_data.TelemetryData.RamTotalGb:F1}GB");
 
                 table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("Tipo de Disco y Uso");
                 table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.TelemetryData.DiskType} ({_data.TelemetryData.DiskUsagePercent}%)");

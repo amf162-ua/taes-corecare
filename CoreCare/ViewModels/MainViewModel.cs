@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CoreCare.Models;
 using CoreCare.Services;
@@ -14,6 +14,7 @@ namespace CoreCare.ViewModels
     {
         private readonly HardwareMonitorService _hardwareService;
         private readonly ProcessService _processService;
+        private readonly GeminiAIService _geminiService;
 
         [ObservableProperty]
         private string _cpuDisplay;
@@ -24,6 +25,7 @@ namespace CoreCare.ViewModels
         {
             _hardwareService = new HardwareMonitorService();
             _processService = new ProcessService();
+            _geminiService = new GeminiAIService();
 
             var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
             timer.Tick += (s, e) => UpdateAllData();
@@ -78,37 +80,45 @@ namespace CoreCare.ViewModels
         }
 
         [RelayCommand]
-        public void GenerateReport()
+        public async Task GenerateReportAsync()
         {
             try
             {
-                // 1. Configuramos unos datos de prueba (Simulando a la IA y los Sensores)
+                _hardwareService.UpdateHardware();
+                _hardwareService.UpdateHardware();
+
+                var cpuTemp = _hardwareService.GetCpuTemperature();
+                float cpuLoad = (float)Math.Round(_hardwareService.GetCpuLoad(), 1, MidpointRounding.ToEven);
+                float cpuTempVal = (float)Math.Round(cpuTemp.Value, 1);
+                float ramUsed = (float)Math.Round(_hardwareService.GetRamUsageGb(), 1);
+                float ramAvailable = (float)Math.Round(_hardwareService.GetRamAvailableGb(), 1);
+                float ramTotal = (float)Math.Round(ramUsed + ramAvailable, 1);
+
+                var telemetryData = new SystemTelemetryMock
+                {
+                    CpuUsagePercent = cpuLoad,
+                    CpuTemperatureC = cpuTempVal,
+                    RamTotalGb = ramTotal,
+                    RamUsedGb = ramUsed,
+                    DiskType = "[PLACEHOLDER]",
+                    DiskUsagePercent = 0
+                };
+
+                var aiResponse = await _geminiService.GetRecommendationsAsync(telemetryData);
+
+                var recommendations = new System.Collections.Generic.List<string> { aiResponse };
+
                 var data = new ReportData
                 {
                     CompanyName = "TechRepairs S.L.",
                     ClientName = "Jesús Pérez",
                     ReportDate = DateTime.Now,
-                    Recommendations = new System.Collections.Generic.List<string>
-                    {
-                        "Desactivar servicios secundarios de Autodesk Update.",
-                        "Aumentar RAM a 16GB. Coste bajo, impacto alto.",
-                        "Cambiar disco duro magnético por unidad SSD."
-                    },
-                    TelemetryData = new SystemTelemetryMock
-                    {
-                        CpuUsagePercent = 85.5,
-                        CpuTemperatureC = 92.0,
-                        RamTotalGb = 8,
-                        RamUsedGb = 7.5,
-                        DiskType = "HDD",
-                        DiskUsagePercent = 100
-                    }
+                    Recommendations = recommendations,
+                    TelemetryData = telemetryData
                 };
 
-                // 2. Pasamos los datos al documento
                 var document = new ReportDocument(data);
 
-                // 3. Lo guardamos en el escritorio del usuario
                 string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
                 string filePath = System.IO.Path.Combine(desktopPath, $"Informe_CoreCare_{DateTime.Now:yyyyMMdd_HHmmss}.pdf");
 

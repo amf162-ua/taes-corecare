@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -11,19 +12,37 @@ namespace CoreCare.Services
     {
         private readonly HttpClient _httpClient;
 
-        // Usar una variable de entorno para mantener segura la API de Gemini
-        private readonly string ApiKey; 
+        private readonly string ApiKey;
 
-        // URL del modelo Gemini 1.5 Flash
         private const string ApiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
         public GeminiAIService()
         {
             _httpClient = new HttpClient();
-            // Intenta obtener la clave de las variables de entorno del usuario o del sistema
-            ApiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY", EnvironmentVariableTarget.User) 
-                     ?? Environment.GetEnvironmentVariable("GEMINI_API_KEY", EnvironmentVariableTarget.Process) 
-                     ?? "CLAVE_NO_CONFIGURADA";
+            ApiKey = LoadApiKey();
+        }
+
+        private string LoadApiKey()
+        {
+            string? key = null;
+
+            string envFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", ".env");
+            if (File.Exists(envFilePath))
+            {
+                foreach (var line in File.ReadAllLines(envFilePath))
+                {
+                    if (line.StartsWith("GEMINI_API_KEY="))
+                    {
+                        key = line.Substring("GEMINI_API_KEY=".Length).Trim();
+                        break;
+                    }
+                }
+            }
+
+            key ??= Environment.GetEnvironmentVariable("GEMINI_API_KEY", EnvironmentVariableTarget.User);
+            key ??= Environment.GetEnvironmentVariable("GEMINI_API_KEY", EnvironmentVariableTarget.Process);
+
+            return key ?? "CLAVE_NO_CONFIGURADA";
         }
 
         public async Task<string> GetRecommendationsAsync(SystemTelemetryMock data)
