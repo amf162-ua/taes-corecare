@@ -97,31 +97,29 @@ namespace CoreCare.ViewModels
                 loadingWindow = new LoadingWindow();
                 loadingWindow.Show();
 
-                _hardwareService.UpdateHardware();
-                _hardwareService.UpdateHardware();
+                var hardwareTask = Task.Run(() =>
+                {
+                    _hardwareService.UpdateHardware();
+                    _hardwareService.UpdateHardware();
+                });
+                var specsTask = Task.Run(() => _systemSpecsService.GetSystemSpecs());
 
-                float cpuLoad = (float)Math.Round(_hardwareService.GetCpuLoad(), 1, MidpointRounding.ToEven);
-                float gpuLoad = (float)Math.Round(_hardwareService.GetGpuLoad(), 1, MidpointRounding.ToEven);
-                float gpuTemp = (float)Math.Round(_hardwareService.GetGpuTemperature(), 1, MidpointRounding.ToEven);
+                await Task.WhenAll(hardwareTask, specsTask);
+
+                var systemSpecs = specsTask.Result;
                 float ramUsed = (float)Math.Round(_hardwareService.GetRamUsageGb(), 1);
                 float ramAvailable = (float)Math.Round(_hardwareService.GetRamAvailableGb(), 1);
                 float ramTotal = (float)Math.Round(ramUsed + ramAvailable, 1);
 
                 var telemetryData = new SystemTelemetryMock
                 {
-                    CpuUsagePercent = cpuLoad,
-                    CpuTemperatureC = gpuTemp,
+                    CpuUsagePercent = (float)Math.Round(_hardwareService.GetCpuLoad(), 1, MidpointRounding.ToEven),
+                    CpuTemperatureC = (float)Math.Round(_hardwareService.GetGpuTemperature(), 1, MidpointRounding.ToEven),
                     RamTotalGb = ramTotal,
                     RamUsedGb = ramUsed,
-                    DiskType = "[PLACEHOLDER]",
-                    DiskUsagePercent = gpuLoad
+                    DiskType = systemSpecs.DiskModel,
+                    DiskUsagePercent = 0
                 };
-
-                var systemSpecs = _systemSpecsService.GetSystemSpecs();
-                systemSpecs.RamTotalGb = ramTotal;
-
-                telemetryData.DiskType = systemSpecs.DiskModel;
-                telemetryData.DiskUsagePercent = 0;
 
                 var aiResponse = await _geminiService.GetRecommendationsAsync(telemetryData, systemSpecs);
 
@@ -136,10 +134,6 @@ namespace CoreCare.ViewModels
                 {
                     recommendations.Add(aiResponse);
                 }
-
-                systemSpecs.RamTotalGb = ramTotal;
-                telemetryData.DiskType = systemSpecs.DiskModel;
-                telemetryData.DiskUsagePercent = 0;
 
                 var data = new ReportData
                 {
