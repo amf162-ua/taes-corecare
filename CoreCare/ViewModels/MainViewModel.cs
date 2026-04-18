@@ -97,6 +97,8 @@ namespace CoreCare.ViewModels
                 loadingWindow = new LoadingWindow();
                 loadingWindow.Show();
 
+                loadingWindow.UpdateProgress(0, "Recopilando datos del sistema...");
+
                 var hardwareTask = Task.Run(() =>
                 {
                     _hardwareService.UpdateHardware();
@@ -105,6 +107,8 @@ namespace CoreCare.ViewModels
                 var specsTask = Task.Run(() => _systemSpecsService.GetSystemSpecs());
 
                 await Task.WhenAll(hardwareTask, specsTask);
+
+                loadingWindow.UpdateProgress(20, "Analizando hardware...");
 
                 var systemSpecs = specsTask.Result;
                 float ramUsed = (float)Math.Round(_hardwareService.GetRamUsageGb(), 1);
@@ -121,6 +125,8 @@ namespace CoreCare.ViewModels
                     DiskUsagePercent = 0
                 };
 
+                loadingWindow.UpdateProgress(40, "Generando recomendaciones con IA...");
+
                 var aiResponse = await _geminiService.GetRecommendationsAsync(telemetryData, systemSpecs);
 
                 var recommendations = new System.Collections.Generic.List<string>();
@@ -135,6 +141,8 @@ namespace CoreCare.ViewModels
                     recommendations.Add(aiResponse);
                 }
 
+                loadingWindow.UpdateProgress(80, "Generando informe PDF...");
+
                 var data = new ReportData
                 {
                     CompanyName = "TechRepairs S.L.",
@@ -146,6 +154,7 @@ namespace CoreCare.ViewModels
                 };
 
                 var document = new ReportDocument(data);
+                loadingWindow.UpdateProgress(100, "¡Completado!");
                 loadingWindow.Close();
 
                 var saveDialog = new Microsoft.Win32.SaveFileDialog
