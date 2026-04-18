@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Text;
@@ -14,7 +15,7 @@ namespace CoreCare.Services
 
         private readonly string ApiKey;
 
-        private const string ApiUrl = "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent";
+        private const string ApiUrl = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
 
         public GeminiAIService()
         {
@@ -58,13 +59,36 @@ namespace CoreCare.Services
             return key ?? "CLAVE_NO_CONFIGURADA";
         }
 
-        public async Task<string> GetRecommendationsAsync(SystemTelemetryMock data)
+        public async Task<string> GetRecommendationsAsync(SystemTelemetryMock data, SystemSpecs specs)
         {
-            // Serialize telemetry data to string
-            string jsonData = JsonSerializer.Serialize(data);
+            var combined = new
+            {
+                telemetry = data,
+                specs = specs
+            };
+            string jsonData = JsonSerializer.Serialize(combined);
 
-            // Build the prompt for Gemini
-            string promptMessage = $"Eres un experto informático. Analiza los siguientes datos de telemetría de un PC y devuelve un array JSON con recomendaciones de mejora, teniendo en cuenta coste e impacto. Datos: {jsonData}";
+            string promptMessage = $@"Eres un experto tecnológico. Analiza los datos de telemetría y las especificaciones del sistema proporcionadas y da recomendaciones de mejora para el cliente.
+Formato SIN asteriscos, SIN Markdown, texto plano limpio:
+
+=== PRIORIDAD ALTA ===
+[Componente que necesita atención]
+- Problema: [qué está mal o puede mejorar]
+- Solución: [qué hacer]
+- Coste: Bajo / Medio / Alto
+- Impacto: Bajo / Medio / Alto
+
+=== PRIORIDAD MEDIA ===
+[Otro componente]
+- Problema: [...]
+- Solución: [...]
+- Coste: ...
+- Impacto: ...
+
+=== NOTAS ADICIONALES ===
+[Consejos extra si aplica]
+
+Datos de sistema: {jsonData}";
 
             // Payload for Gemini API 
             var payload = new
@@ -92,12 +116,42 @@ namespace CoreCare.Services
 
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadAsStringAsync();
+                string responseJson = await response.Content.ReadAsStringAsync();
+
+                try
+                {
+                    var parsed = JsonSerializer.Deserialize<GeminiResponse>(responseJson);
+                    return parsed?.candidates?[0]?.content?.parts?[0]?.text ?? responseJson;
+                }
+                catch
+                {
+                    return responseJson;
+                }
             }
             else
             {
                 return $"Error: {response.StatusCode} - {await response.Content.ReadAsStringAsync()}";
             }
         }
+    }
+
+    internal class GeminiResponse
+    {
+        public List<Candidate>? candidates { get; set; }
+    }
+
+    internal class Candidate
+    {
+        public Content? content { get; set; }
+    }
+
+    internal class Content
+    {
+        public List<Part>? parts { get; set; }
+    }
+
+    internal class Part
+    {
+        public string? text { get; set; }
     }
 }

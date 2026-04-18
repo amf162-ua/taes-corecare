@@ -117,12 +117,29 @@ namespace CoreCare.ViewModels
                     DiskUsagePercent = gpuLoad
                 };
 
-                var aiResponse = await _geminiService.GetRecommendationsAsync(telemetryData);
-
-                var recommendations = new System.Collections.Generic.List<string> { aiResponse };
-
                 var systemSpecs = _systemSpecsService.GetSystemSpecs();
                 systemSpecs.RamTotalGb = ramTotal;
+
+                telemetryData.DiskType = systemSpecs.DiskModel;
+                telemetryData.DiskUsagePercent = 0;
+
+                var aiResponse = await _geminiService.GetRecommendationsAsync(telemetryData, systemSpecs);
+
+                var recommendations = new System.Collections.Generic.List<string>();
+
+                if (aiResponse.StartsWith("Error:"))
+                {
+                    recommendations.Add("Error al conectar con IA. Intenta más tarde.");
+                    MessageBox.Show("No se pudieron obtener recomendaciones de IA.\nEl servicio está temporalmente no disponible.", "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                else
+                {
+                    recommendations.Add(aiResponse);
+                }
+
+                systemSpecs.RamTotalGb = ramTotal;
+                telemetryData.DiskType = systemSpecs.DiskModel;
+                telemetryData.DiskUsagePercent = 0;
 
                 var data = new ReportData
                 {

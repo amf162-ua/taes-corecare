@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using CoreCare.Models;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -95,15 +96,12 @@ namespace CoreCare.Services
 
                 if (_data.Recommendations != null && _data.Recommendations.Count > 0)
                 {
-                    foreach (var rec in _data.Recommendations)
+                    var recText = _data.Recommendations.FirstOrDefault() ?? "No hay recomendaciones.";
+
+                    column.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Background(Colors.White).Padding(10).Text(text =>
                     {
-                        column.Item().Row(row =>
-                        {
-                            row.Spacing(5);
-                            row.AutoItem().Text("•");
-                            row.RelativeItem().Text(rec);
-                        });
-                    }
+                        text.Span(recText).FontSize(9);
+                    });
                 }
                 else
                 {
