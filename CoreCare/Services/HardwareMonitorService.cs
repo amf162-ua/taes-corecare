@@ -18,6 +18,7 @@ namespace CoreCare.Services
     {
         private readonly Computer _computer;
         private readonly int _windowLimit = 5;
+        private const float MaxPlausibleDiskThroughputMbit = 200_000f;
 
         private readonly float[] _cpuTempWindow;
         private int _tempWindowIndex = 0;
@@ -414,7 +415,7 @@ namespace CoreCare.Services
         public float GetDiskLoad()
             => TryGetDiskLoad(out var value, out _) ? value : 0f;
 
-        public bool TryGetDiskReadRateMb(out float value, out string reason)
+        public bool TryGetDiskReadRateMbit(out float value, out string reason)
         {
             value = 0f;
             reason = string.Empty;
@@ -433,25 +434,29 @@ namespace CoreCare.Services
 
             if (readSensor?.Value is float read)
             {
-                value = read;
-                return true;
+                var sensorMbit = NormalizeSensorThroughputToMbit(read, readSensor.Name);
+                if (sensorMbit is >= 0f and <= MaxPlausibleDiskThroughputMbit)
+                {
+                    value = sensorMbit;
+                    return true;
+                }
             }
 
             var wmiRead = TryGetWmiDiskReadBytesPerSec();
             if (wmiRead.HasValue)
             {
-                value = wmiRead.Value / (1024f * 1024f);
+                value = (wmiRead.Value * 8f) / 1_000_000f;
                 return true;
             }
 
-            reason = "Disk read throughput sensor and WMI fallback did not return data.";
+            reason = "Disk read throughput (Mb/s) sensor and WMI fallback did not return data.";
             return false;
         }
 
-        public float GetDiskReadRateMb()
-            => TryGetDiskReadRateMb(out var value, out _) ? value : 0f;
+        public float GetDiskReadRateMbit()
+            => TryGetDiskReadRateMbit(out var value, out _) ? value : 0f;
 
-        public bool TryGetDiskWriteRateMb(out float value, out string reason)
+        public bool TryGetDiskWriteRateMbit(out float value, out string reason)
         {
             value = 0f;
             reason = string.Empty;
@@ -470,23 +475,27 @@ namespace CoreCare.Services
 
             if (writeSensor?.Value is float write)
             {
-                value = write;
-                return true;
+                var sensorMbit = NormalizeSensorThroughputToMbit(write, writeSensor.Name);
+                if (sensorMbit is >= 0f and <= MaxPlausibleDiskThroughputMbit)
+                {
+                    value = sensorMbit;
+                    return true;
+                }
             }
 
             var wmiWrite = TryGetWmiDiskWriteBytesPerSec();
             if (wmiWrite.HasValue)
             {
-                value = wmiWrite.Value / (1024f * 1024f);
+                value = (wmiWrite.Value * 8f) / 1_000_000f;
                 return true;
             }
 
-            reason = "Disk write throughput sensor and WMI fallback did not return data.";
+            reason = "Disk write throughput (Mb/s) sensor and WMI fallback did not return data.";
             return false;
         }
 
-        public float GetDiskWriteRateMb()
-            => TryGetDiskWriteRateMb(out var value, out _) ? value : 0f;
+        public float GetDiskWriteRateMbit()
+            => TryGetDiskWriteRateMbit(out var value, out _) ? value : 0f;
 
         private float? TryGetWmiDiskPercentTime()
         {
@@ -537,6 +546,39 @@ namespace CoreCare.Services
             catch { }
 
             return null;
+        }
+
+        private static float NormalizeSensorThroughputToMbit(float rawValue, string sensorName)
+        {
+            if (rawValue < 0f)
+            {
+                return -1f;
+            }
+
+            // Prefer explicit unit hints when present in the sensor name.
+            if (sensorName.Contains("GB/s", StringComparison.OrdinalIgnoreCase))
+            {
+                return rawValue * 8_000f;
+            }
+
+            if (sensorName.Contains("MB/s", StringComparison.OrdinalIgnoreCase))
+            {
+                return rawValue * 8f;
+            }
+
+            if (sensorName.Contains("KB/s", StringComparison.OrdinalIgnoreCase) ||
+                sensorName.Contains("KiB/s", StringComparison.OrdinalIgnoreCase))
+            {
+                return (rawValue * 8f) / 1_000f;
+            }
+
+            if (sensorName.Contains("B/s", StringComparison.OrdinalIgnoreCase))
+            {
+                return (rawValue * 8f) / 1_000_000f;
+            }
+
+            // Default for LibreHardwareMonitor throughput sensors.
+            return (rawValue * 8f) / 1_000f;
         }
 
         public void Dispose() => _computer.Close();

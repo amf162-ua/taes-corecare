@@ -179,8 +179,8 @@ namespace CoreCare.Services
             {
                 Console.WriteLine("\n[DISCO]");
                 Console.WriteLine($"Carga media:      {registro.DiskLoad:F1} %");
-                Console.WriteLine($"Lectura media:    {registro.DiskReadRate:F2} MB/s");
-                Console.WriteLine($"Escritura media:  {registro.DiskWriteRate:F2} MB/s");
+                Console.WriteLine($"Lectura media:    {registro.DiskReadRate:F2} Mb/s");
+                Console.WriteLine($"Escritura media:  {registro.DiskWriteRate:F2} Mb/s");
             }
 
             if (unavailableReadings.Any())
