@@ -5,6 +5,55 @@
 
     <Grid Background="#F5F5F7">
         <TabControl Margin="10">
+            <TabItem Header="Benchmark">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="240"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Modo:"/>
+                    <ComboBox Grid.Row="0" Grid.Column="1"
+                              Margin="8,0,0,0"
+                              ItemsSource="{Binding BenchmarkOptions}"
+                              SelectedItem="{Binding SelectedBenchmarkOption}"
+                              DisplayMemberPath="Label"/>
+
+                    <Button Grid.Row="0" Grid.Column="3"
+                            Margin="0,0,10,0"
+                            Padding="14,5"
+                            Command="{Binding RunBenchmarkCommand}"
+                            Content="Ejecutar benchmark"/>
+
+                    <TextBlock Grid.Row="0" Grid.Column="4"
+                               VerticalAlignment="Center"
+                               Foreground="#616161"
+                               Text="{Binding BenchmarkDurationSeconds, StringFormat=Duracion: {0} s}"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5"
+                               Margin="0,10,0,10"
+                               FontWeight="SemiBold"
+                               Text="{Binding BenchmarkStatus}"/>
+
+                    <TextBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="5"
+                             Text="{Binding BenchmarkSummary}"
+                             IsReadOnly="True"
+                             FontFamily="Consolas"
+                             VerticalScrollBarVisibility="Auto"
+                             HorizontalScrollBarVisibility="Auto"
+                             AcceptsReturn="True"
+                             TextWrapping="NoWrap"/>
+                </Grid>
+            </TabItem>
+
             <TabItem Header="Monitor">
                 <Grid>
                     <Grid.RowDefinitions>

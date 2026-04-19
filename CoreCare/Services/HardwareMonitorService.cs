@@ -17,6 +17,7 @@ namespace CoreCare.Services
     public class HardwareMonitorService : IDisposable
     {
         private readonly Computer _computer;
+        private readonly object _updateLock = new();
         private readonly int _windowLimit = 5;
         private const float MaxPlausibleDiskThroughputMbit = 200_000f;
 
@@ -125,12 +126,39 @@ namespace CoreCare.Services
 
         public void UpdateHardware()
         {
-            foreach (var hw in _computer.Hardware)
+            lock (_updateLock)
             {
-                hw.Update();
-                foreach (var subHw in hw.SubHardware)
+                foreach (var hw in _computer.Hardware)
                 {
-                    subHw.Update();
+                    if (hw is null)
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        hw.Update();
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    foreach (var subHw in hw.SubHardware)
+                    {
+                        if (subHw is null)
+                        {
+                            continue;
+                        }
+
+                        try
+                        {
+                            subHw.Update();
+                        }
+                        catch
+                        {
+                        }
+                    }
                 }
             }
         }
