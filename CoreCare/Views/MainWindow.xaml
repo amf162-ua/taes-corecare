@@ -1,66 +1,27 @@
-﻿<Window x:Class="CoreCare.MainWindow"
+﻿<Window x:Class="AxiomWorks.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="CoreCare - Monitor de Sistema" Height="600" Width="800">
+        Title="Core Care by AXIOM WORKS" Height="720" Width="1280"
+        Background="#0a0e1a">
 
-    <Grid Background="#F5F5F7">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+	<Grid>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="*"/>
+			<RowDefinition Height="Auto"/>
+		</Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Margin="20">
-            <TextBlock Text="{Binding CpuDisplay}" FontSize="50" FontWeight="Bold" Foreground="#2196F3" HorizontalAlignment="Center"/>
-            <TextBlock Text="Uso de Procesador" HorizontalAlignment="Center" Foreground="Gray"/>
-        </StackPanel>
+		<StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="10">
+			<Button Content="Login" Command="{Binding LoginCommand}" Margin="5"/>
+			<Button Content="Premium" Command="{Binding PremiumCommand}" Margin="5"/>
+			<Button Content="Perfil" Command="{Binding ProfileCommand}" Margin="5"/>
+		</StackPanel>
 
-        <DataGrid Grid.Row="1" 
-          ItemsSource="{Binding Processes}" 
-          AutoGenerateColumns="False" 
-          Margin="10" 
-          IsReadOnly="True"
-          Background="White"
-          RowHeaderWidth="0"
-          GridLinesVisibility="None"
-          BorderThickness="0">
+		<Frame Grid.Row="1" x:Name="MainFrame" NavigationUIVisibility="Hidden"/>
 
-            <DataGrid.RowStyle>
-                <Style TargetType="DataGridRow">
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsHighConsumption}" Value="True">
-                            <Setter Property="Background" Value="#FFEBEB"/>
-                            <Setter Property="Foreground" Value="#C62828"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </DataGrid.RowStyle>
-
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="Aplicación" Binding="{Binding Description}" Width="*"/>
-                <DataGridTextColumn Header="RAM (MB)" Binding="{Binding RamUsageMB, StringFormat=\{0:N0\}}" Width="100"/>
-                <DataGridTextColumn Header="Proceso" Binding="{Binding Name}" Width="150"/>
-
-                <DataGridTemplateColumn Width="100">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <Button Content="Finalizar" 
-                            Command="{Binding DataContext.TerminateProcessCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                            CommandParameter="{Binding}"
-                            Background="#FF5252" 
-                            Foreground="White" 
-                            FontSize="10" 
-                            Padding="5,2"
-                            BorderThickness="0">
-                                <Button.Resources>
-                                    <Style TargetType="Border">
-                                        <Setter Property="CornerRadius" Value="3"/>
-                                    </Style>
-                                </Button.Resources>
-                            </Button>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-            </DataGrid.Columns>
-        </DataGrid>
-    </Grid>
+		<Border Grid.Row="2" BorderBrush="#3300FFFF" BorderThickness="0,1,0,0" Padding="20">
+			<TextBlock Text="© 2026 AXIOM WORKS. TODOS LOS DERECHOS RESERVADOS."
+                       Foreground="Gray" HorizontalAlignment="Center"/>
+		</Border>
+	</Grid>
 </Window>

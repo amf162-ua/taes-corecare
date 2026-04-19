@@ -4,6 +4,14 @@
              xmlns:local="clr-namespace:CoreCare"
              StartupUri="Views/MainWindow.xaml">
     <Application.Resources>
-         
+        <ResourceDictionary>
+            <SolidColorBrush x:Key="CoreBackground" Color="#0a0e1a" />
+            <SolidColorBrush x:Key="CoreTextMuted" Color="#9CA3AF" />
+            <SolidColorBrush x:Key="CoreCyan" Color="#00FFFF" />
+
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Styles/theme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>
