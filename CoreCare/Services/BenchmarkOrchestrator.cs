@@ -365,21 +365,25 @@ namespace CoreCare.Orchestrators
 
             // Cálculo de score normalizado según componentes escaneados
             float score = 10f;
-            int componentCount = 0;
             float maxPossibleDeduction = 0f;
 
             if (options.ScanCPU)
             {
-                componentCount++;
-                score -= Math.Min(3f, Math.Max(0, result.PeakCpuTemp / 100f * 3f));
-                score -= Math.Min(2f, Math.Max(0, result.AvgCpuLoad / 100f * 2f));
-                maxPossibleDeduction += 5f;
+                if (cpuTemps.Any())
+                {
+                    score -= Math.Min(3f, Math.Max(0, result.PeakCpuTemp / 100f * 3f));
+                    maxPossibleDeduction += 3f;
+                }
+
+                if (cpuLoads.Any())
+                {
+                    score -= Math.Min(2f, Math.Max(0, result.AvgCpuLoad / 100f * 2f));
+                    maxPossibleDeduction += 2f;
+                }
             }
 
             if (options.ScanGPU)
             {
-                componentCount++;
-
                 if (gpuTemps.Any())
                 {
                     score -= Math.Min(2f, Math.Max(0, result.PeakGpuTemp / 100f * 2f));
@@ -395,20 +399,24 @@ namespace CoreCare.Orchestrators
 
             if (options.ScanRAM)
             {
-                componentCount++;
-                score -= Math.Min(2f, Math.Max(0, result.AvgRamLoad / 100f * 2f));
-                maxPossibleDeduction += 2f;
+                if (ramLoads.Any())
+                {
+                    score -= Math.Min(2f, Math.Max(0, result.AvgRamLoad / 100f * 2f));
+                    maxPossibleDeduction += 2f;
+                }
             }
 
             if (options.ScanDisk)
             {
-                componentCount++;
-                score -= Math.Min(1.5f, Math.Max(0, result.AvgDiskLoad / 100f * 1.5f));
-                maxPossibleDeduction += 1.5f;
+                if (diskLoads.Any())
+                {
+                    score -= Math.Min(1.5f, Math.Max(0, result.AvgDiskLoad / 100f * 1.5f));
+                    maxPossibleDeduction += 1.5f;
+                }
             }
 
-            // Normalizar score si no se escanean todos los componentes
-            if (componentCount > 0 && maxPossibleDeduction > 0)
+            // Normalizar score solo con métricas efectivamente disponibles.
+            if (maxPossibleDeduction > 0)
             {
                 float deduction = 10f - score;
                 float scaleFactor = 10.5f / maxPossibleDeduction;  // 10.5 es la suma de todos los máximos posibles
@@ -422,13 +430,13 @@ namespace CoreCare.Orchestrators
             {
                 Timestamp = DateTime.Now,
                 CpuTemp = cpuTemps.Any() ? cpuTemps.Average() : 0f,
-                CpuLoad = result.AvgCpuLoad,
+                CpuLoad = cpuLoads.Any() ? result.AvgCpuLoad : 0f,
                 CpuClock = cpuClocks.Any() ? cpuClocks.Average() : 0f,
                 GpuTemp = gpuTemps.Any() ? gpuTemps.Average() : 0f,
                 GpuLoad = gpuLoads.Any() ? gpuLoads.Average() : 0f,
                 RamUsed = ramUsed.Any() ? ramUsed.Average() : 0f,
-                RamLoad = result.AvgRamLoad,
-                DiskLoad = result.AvgDiskLoad,
+                RamLoad = ramLoads.Any() ? result.AvgRamLoad : 0f,
+                DiskLoad = diskLoads.Any() ? result.AvgDiskLoad : 0f,
                 DiskReadRate = diskReads.Any() ? diskReads.Average() : 0f,
                 DiskWriteRate = diskWrites.Any() ? diskWrites.Average() : 0f,
                 Score = result.Score
