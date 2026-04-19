@@ -2,10 +2,13 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CoreCare.Models;
 using CoreCare.Services;
+using CoreCare.Data;
 using System.Collections.ObjectModel;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Input;
 using System.Windows;
+using System.Linq;
+using System.Windows.Media;
 
 namespace CoreCare.ViewModels
 {
@@ -17,7 +20,26 @@ namespace CoreCare.ViewModels
         [ObservableProperty]
         private string _cpuDisplay;
 
+        [ObservableProperty]
+        private DateTime _historyFrom = DateTime.Today.AddDays(-30);
+
+        [ObservableProperty]
+        private DateTime _historyTo = DateTime.Today;
+
+        [ObservableProperty]
+        private string _historyStatus = "Sin datos cargados.";
+
+        [ObservableProperty]
+        private string _degradationStatus = "Analisis de degradacion pendiente.";
+
+        [ObservableProperty]
+        private string _trendStatus = "Tendencia pendiente.";
+
+        [ObservableProperty]
+        private Brush _degradationBrush = Brushes.DimGray;
+
         public ObservableCollection<ProcessItem> Processes { get; set; } = new();
+        public ObservableCollection<RegistroBenchmark> HistoryItems { get; } = new();
 
         public MainViewModel()
         {
@@ -29,6 +51,7 @@ namespace CoreCare.ViewModels
             timer.Start();
 
             UpdateAllData();
+            LoadHistory();
         }
 
         private void UpdateAllData()
@@ -74,6 +97,94 @@ namespace CoreCare.ViewModels
                     MessageBox.Show("No se pudo cerrar. Puede que no tengas permisos o el proceso ya haya terminado.");
                 }
             }
+        }
+
+        [RelayCommand]
+        private void LoadHistory()
+        {
+            try
+            {
+                using var db = new CoreCareDbContext();
+                int userId = GetOrCreateSystemUserId(db);
+
+                var historyService = new BenchmarkHistoryService(db);
+
+                DateTime from = HistoryFrom.Date;
+                DateTime to = HistoryTo.Date.AddDays(1).AddTicks(-1);
+
+                if (from > to)
+                {
+                    HistoryStatus = "Rango invalido: 'Desde' no puede ser mayor que 'Hasta'.";
+                    return;
+                }
+
+                var history = historyService.GetHistory(userId, from, to, 200);
+
+                HistoryItems.Clear();
+                foreach (var item in history)
+                {
+                    HistoryItems.Add(item);
+                }
+
+                HistoryStatus = $"Usuario {userId}: {history.Count} registros en el rango {from:yyyy-MM-dd} a {to:yyyy-MM-dd}.";
+
+                var trend = historyService.BuildTrend(history);
+                TrendStatus = BuildTrendStatus(trend);
+
+                var degradation = historyService.AnalyzeDegradation(history);
+                DegradationStatus = degradation.Message;
+                DegradationBrush = !degradation.HasEnoughData
+                    ? Brushes.DarkGoldenrod
+                    : degradation.IsDegraded ? Brushes.Firebrick : Brushes.SeaGreen;
+            }
+            catch (Exception ex)
+            {
+                HistoryStatus = $"Error cargando historico: {ex.GetBaseException().Message}";
+                DegradationStatus = "No se pudo calcular degradacion.";
+                TrendStatus = "No se pudo calcular tendencia.";
+                DegradationBrush = Brushes.Firebrick;
+            }
+        }
+
+        private static string BuildTrendStatus(IReadOnlyList<BenchmarkTrendPoint> trend)
+        {
+            if (trend.Count < 2)
+            {
+                return "Tendencia: datos insuficientes para comparar evolucion.";
+            }
+
+            var first = trend.First();
+            var last = trend.Last();
+            float scoreDelta = last.Score - first.Score;
+            string direction = scoreDelta > 0f ? "mejora" : scoreDelta < 0f ? "empeora" : "estable";
+
+            return $"Tendencia score: {first.Score:F1} -> {last.Score:F1} ({Math.Abs(scoreDelta):F1}, {direction}).";
+        }
+
+        private static int GetOrCreateSystemUserId(CoreCareDbContext db)
+        {
+            var existingUser = db.Users.FirstOrDefault(user => user.IsActive);
+
+            if (existingUser != null)
+            {
+                return existingUser.Id;
+            }
+
+            var systemUser = new User
+            {
+                name = "prueba",
+                username = "prueba",
+                email = "prueba@corecare.local",
+                password = string.Empty,
+                createdAt = DateTime.UtcNow,
+                IsActive = true,
+                Plan = TipoPlan.Basico
+            };
+
+            db.Users.Add(systemUser);
+            db.SaveChanges();
+
+            return systemUser.Id;
         }
     }
 }
