@@ -34,6 +34,8 @@ namespace CoreCare.Services
         public string CacheL2 { get; private set; } = "N/A";
         public string CacheL3 { get; private set; } = "N/A";
 
+        private const string UnavailableReason = "No sensor data available.";
+
         public HardwareMonitorService()
         {
             _computer = new Computer
@@ -74,11 +76,19 @@ namespace CoreCare.Services
             catch { }
         }
 
-        public float GetCpuClockGHz()
+        public bool TryGetCpuClockGHz(out float value, out string reason)
         {
-            var cpu = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);
+            value = 0f;
+            reason = string.Empty;
 
-            var coreClocks = cpu?.Sensors
+            var cpu = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);
+            if (cpu is null)
+            {
+                reason = "CPU hardware not detected.";
+                return false;
+            }
+
+            var coreClocks = cpu.Sensors
                 .Where(s => s.SensorType == SensorType.Clock && s.Name.Contains("Core"))
                 .Where(s => s.Value.HasValue)
                 .ToList();
@@ -92,11 +102,25 @@ namespace CoreCare.Services
 
             if (currentMhz == 0f)
             {
-                currentMhz = GetWmiCpuClock();
+                var wmiClock = TryGetWmiCpuClock();
+                if (wmiClock.HasValue)
+                {
+                    currentMhz = wmiClock.Value;
+                }
             }
 
-            return currentMhz / 1000f;
+            if (currentMhz <= 0f)
+            {
+                reason = "CPU clock sensor and WMI fallback did not return data.";
+                return false;
+            }
+
+            value = currentMhz / 1000f;
+            return true;
         }
+
+        public float GetCpuClockGHz()
+            => TryGetCpuClockGHz(out var value, out _) ? value : 0f;
 
         public void UpdateHardware()
         {
@@ -118,40 +142,79 @@ namespace CoreCare.Services
             return $"{uptime.Days}:{uptime.Hours:D2}:{uptime.Minutes:D2}:{uptime.Seconds:D2}";
         }
 
-        public TelemetryData GetCpuTemperature()
+        public bool TryGetCpuTemperature(out TelemetryData value, out string reason)
         {
-            var cpu = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);
-            var sensor = cpu?.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Temperature && s.Value > 0);
-            float rawTemp = sensor?.Value ?? GetWmiCpuTemperature();
+            value = default;
+            reason = string.Empty;
 
-            _cpuTempWindow[_tempWindowIndex] = rawTemp;
+            var cpu = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);
+            float? rawTemp = cpu?.Sensors
+                .FirstOrDefault(s => s.SensorType == SensorType.Temperature && s.Value > 0)
+                ?.Value;
+
+            if (!rawTemp.HasValue)
+            {
+                rawTemp = TryGetWmiCpuTemperature();
+            }
+
+            if (!rawTemp.HasValue || rawTemp.Value <= 0f)
+            {
+                reason = "CPU temperature sensor and WMI fallback did not return data.";
+                return false;
+            }
+
+            _cpuTempWindow[_tempWindowIndex] = rawTemp.Value;
             _tempWindowIndex = (_tempWindowIndex + 1) % _windowLimit;
             if (_tempReadingsCount < _windowLimit) _tempReadingsCount++;
 
-            return new TelemetryData
+            value = new TelemetryData
             {
                 Value = _cpuTempWindow.Take(_tempReadingsCount).Average(),
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
             };
+
+            return true;
         }
 
-       
-        public float GetCpuLoad()
-        {
-            var cpu = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);
-            var sensor = cpu?.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Load && s.Value > 0);
-            float rawLoad = sensor?.Value ?? GetWmiCpuLoad();
+        public TelemetryData GetCpuTemperature()
+            => TryGetCpuTemperature(out var value, out _) ? value : default;
 
-            _cpuLoadWindow[_loadWindowIndex] = rawLoad;
+       
+        public bool TryGetCpuLoad(out float value, out string reason)
+        {
+            value = 0f;
+            reason = string.Empty;
+
+            var cpu = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);
+            float? rawLoad = cpu?.Sensors
+                .FirstOrDefault(s => s.SensorType == SensorType.Load && s.Value.HasValue)
+                ?.Value;
+
+            if (!rawLoad.HasValue)
+            {
+                rawLoad = TryGetWmiCpuLoad();
+            }
+
+            if (!rawLoad.HasValue)
+            {
+                reason = "CPU load sensor and WMI fallback did not return data.";
+                return false;
+            }
+
+            _cpuLoadWindow[_loadWindowIndex] = rawLoad.Value;
             _loadWindowIndex = (_loadWindowIndex + 1) % _windowLimit;
             if (_loadReadingsCount < _windowLimit) _loadReadingsCount++;
 
-            return _cpuLoadWindow.Take(_loadReadingsCount).Average();
+            value = _cpuLoadWindow.Take(_loadReadingsCount).Average();
+            return true;
         }
 
-        private float GetWmiCpuTemperature() { /* ... */ try { using var searcher = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM MSAcpi_ThermalZoneTemperature"); foreach (var obj in searcher.Get()) return (Convert.ToSingle(obj["CurrentTemperature"]) / 10f) - 273.15f; } catch { } return 0f; }
-        private float GetWmiCpuClock() { try { using var searcher = new ManagementObjectSearcher("select CurrentClockSpeed from Win32_Processor"); foreach (var item in searcher.Get()) return Convert.ToSingle(item["CurrentClockSpeed"]); } catch { } return 0f; }
-        private float GetWmiCpuLoad() { try { using var searcher = new ManagementObjectSearcher("select LoadPercentage from Win32_Processor"); foreach (var item in searcher.Get()) return Convert.ToSingle(item["LoadPercentage"]); } catch { } return 0f; }
+        public float GetCpuLoad()
+            => TryGetCpuLoad(out var value, out _) ? value : 0f;
+
+        private float? TryGetWmiCpuTemperature() { try { using var searcher = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM MSAcpi_ThermalZoneTemperature"); foreach (var obj in searcher.Get()) return (Convert.ToSingle(obj["CurrentTemperature"]) / 10f) - 273.15f; } catch { } return null; }
+        private float? TryGetWmiCpuClock() { try { using var searcher = new ManagementObjectSearcher("select CurrentClockSpeed from Win32_Processor"); foreach (var item in searcher.Get()) return Convert.ToSingle(item["CurrentClockSpeed"]); } catch { } return null; }
+        private float? TryGetWmiCpuLoad() { try { using var searcher = new ManagementObjectSearcher("select LoadPercentage from Win32_Processor"); foreach (var item in searcher.Get()) return Convert.ToSingle(item["LoadPercentage"]); } catch { } return null; }
 
         public (int Processes, int Threads) GetSystemProcessesAndThreads()
         {
@@ -161,92 +224,271 @@ namespace CoreCare.Services
             return (processes.Length, threadCount);
         }
 
-        public float GetRamUsageGb() { var ram = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Memory); return ram?.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Data && s.Name == "Memory Used")?.Value ?? 0f; }
-        public float GetRamAvailableGb() { var ram = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Memory); return ram?.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Data && s.Name == "Memory Available")?.Value ?? 0f; }
-        public float GetRamLoad()
+        public bool TryGetRamUsageGb(out float value, out string reason)
         {
-            float used = GetRamUsageGb();
-            float available = GetRamAvailableGb();
+            value = 0f;
+            reason = string.Empty;
+
+            var ram = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Memory);
+            if (ram is null)
+            {
+                reason = "RAM hardware not detected.";
+                return false;
+            }
+
+            var sensor = ram.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Data && s.Name == "Memory Used" && s.Value.HasValue);
+            if (sensor?.Value is float used)
+            {
+                value = used;
+                return true;
+            }
+
+            reason = "Memory Used sensor did not return data.";
+            return false;
+        }
+
+        public float GetRamUsageGb()
+            => TryGetRamUsageGb(out var value, out _) ? value : 0f;
+
+        public bool TryGetRamAvailableGb(out float value, out string reason)
+        {
+            value = 0f;
+            reason = string.Empty;
+
+            var ram = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Memory);
+            if (ram is null)
+            {
+                reason = "RAM hardware not detected.";
+                return false;
+            }
+
+            var sensor = ram.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Data && s.Name == "Memory Available" && s.Value.HasValue);
+            if (sensor?.Value is float available)
+            {
+                value = available;
+                return true;
+            }
+
+            reason = "Memory Available sensor did not return data.";
+            return false;
+        }
+
+        public float GetRamAvailableGb()
+            => TryGetRamAvailableGb(out var value, out _) ? value : 0f;
+
+        public bool TryGetRamLoad(out float value, out string reason)
+        {
+            value = 0f;
+            reason = string.Empty;
+
+            bool hasUsed = TryGetRamUsageGb(out float used, out string usedReason);
+            bool hasAvailable = TryGetRamAvailableGb(out float available, out string availableReason);
+
             float total = used + available;
 
-            if (total > 0f)
+            if (hasUsed && hasAvailable && total > 0f)
             {
-                return (used / total) * 100f;
+                value = (used / total) * 100f;
+                return true;
             }
 
             var ram = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Memory);
-            return ram?.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Load && s.Value >= 0)?.Value ?? 0f;
+            var loadSensor = ram?.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Load && s.Value.HasValue);
+            if (loadSensor?.Value is float load)
+            {
+                value = load;
+                return true;
+            }
+
+            reason = $"RAM load unavailable. {usedReason} {availableReason}".Trim();
+            return false;
+        }
+
+        public float GetRamLoad()
+            => TryGetRamLoad(out var value, out _) ? value : 0f;
+
+        public bool TryGetGpuLoad(out float value, out string reason)
+        {
+            value = 0f;
+            reason = string.Empty;
+
+            var gpu = _computer.Hardware.FirstOrDefault(h =>
+                h.HardwareType == HardwareType.GpuNvidia ||
+                h.HardwareType == HardwareType.GpuAmd ||
+                h.HardwareType == HardwareType.GpuIntel);
+
+            if (gpu is null)
+            {
+                reason = "GPU hardware not detected.";
+                return false;
+            }
+
+            var loadSensor = gpu.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Load && s.Value.HasValue);
+            if (loadSensor?.Value is float load)
+            {
+                value = load;
+                return true;
+            }
+
+            reason = "GPU load sensor did not return data.";
+            return false;
         }
 
         public float GetGpuLoad()
+            => TryGetGpuLoad(out var value, out _) ? value : 0f;
+
+        public bool TryGetGpuTemperature(out float value, out string reason)
         {
+            value = 0f;
+            reason = string.Empty;
+
             var gpu = _computer.Hardware.FirstOrDefault(h =>
                 h.HardwareType == HardwareType.GpuNvidia ||
                 h.HardwareType == HardwareType.GpuAmd ||
                 h.HardwareType == HardwareType.GpuIntel);
 
-            return gpu?.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Load && s.Value > 0)?.Value ?? 0f;
+            if (gpu is null)
+            {
+                reason = "GPU hardware not detected.";
+                return false;
+            }
+
+            var temperatureSensors = gpu.Sensors
+                .Where(s => s.SensorType == SensorType.Temperature)
+                .ToList();
+
+            if (!temperatureSensors.Any())
+            {
+                reason = "GPU temperature unsupported on this device.";
+                return false;
+            }
+
+            var tempSensor = temperatureSensors.FirstOrDefault(s => s.Value.HasValue);
+            if (tempSensor?.Value is float temp)
+            {
+                value = temp;
+                return true;
+            }
+
+            reason = "GPU temperature sensor detected but did not return data.";
+            return false;
         }
 
         public float GetGpuTemperature()
-        {
-            var gpu = _computer.Hardware.FirstOrDefault(h =>
-                h.HardwareType == HardwareType.GpuNvidia ||
-                h.HardwareType == HardwareType.GpuAmd ||
-                h.HardwareType == HardwareType.GpuIntel);
+            => TryGetGpuTemperature(out var value, out _) ? value : 0f;
 
-            return gpu?.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Temperature && s.Value > 0)?.Value ?? 0f;
-        }
-
-        public float GetDiskLoad()
+        public bool TryGetDiskLoad(out float value, out string reason)
         {
+            value = 0f;
+            reason = string.Empty;
+
             var storage = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Storage);
 
-            var loadSensor = storage?.Sensors.FirstOrDefault(s =>
+            if (storage is null)
+            {
+                reason = "Storage hardware not detected.";
+                return false;
+            }
+
+            var loadSensor = storage.Sensors.FirstOrDefault(s =>
                 s.SensorType == SensorType.Load &&
                 s.Name.Contains("Used", StringComparison.OrdinalIgnoreCase));
 
             if (loadSensor?.Value is float load)
             {
-                return load;
+                value = load;
+                return true;
             }
 
-            return GetWmiDiskPercentTime();
+            var wmiLoad = TryGetWmiDiskPercentTime();
+            if (wmiLoad.HasValue)
+            {
+                value = wmiLoad.Value;
+                return true;
+            }
+
+            reason = "Disk load sensor and WMI fallback did not return data.";
+            return false;
         }
 
-        public float GetDiskReadRateMb()
+        public float GetDiskLoad()
+            => TryGetDiskLoad(out var value, out _) ? value : 0f;
+
+        public bool TryGetDiskReadRateMb(out float value, out string reason)
         {
+            value = 0f;
+            reason = string.Empty;
+
             var storage = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Storage);
 
-            var readSensor = storage?.Sensors.FirstOrDefault(s =>
+            if (storage is null)
+            {
+                reason = "Storage hardware not detected.";
+                return false;
+            }
+
+            var readSensor = storage.Sensors.FirstOrDefault(s =>
                 s.SensorType == SensorType.Throughput &&
                 s.Name.Contains("Read", StringComparison.OrdinalIgnoreCase));
 
             if (readSensor?.Value is float read)
             {
-                return read;
+                value = read;
+                return true;
             }
 
-            return GetWmiDiskReadBytesPerSec() / (1024f * 1024f);
+            var wmiRead = TryGetWmiDiskReadBytesPerSec();
+            if (wmiRead.HasValue)
+            {
+                value = wmiRead.Value / (1024f * 1024f);
+                return true;
+            }
+
+            reason = "Disk read throughput sensor and WMI fallback did not return data.";
+            return false;
         }
 
-        public float GetDiskWriteRateMb()
+        public float GetDiskReadRateMb()
+            => TryGetDiskReadRateMb(out var value, out _) ? value : 0f;
+
+        public bool TryGetDiskWriteRateMb(out float value, out string reason)
         {
+            value = 0f;
+            reason = string.Empty;
+
             var storage = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Storage);
 
-            var writeSensor = storage?.Sensors.FirstOrDefault(s =>
+            if (storage is null)
+            {
+                reason = "Storage hardware not detected.";
+                return false;
+            }
+
+            var writeSensor = storage.Sensors.FirstOrDefault(s =>
                 s.SensorType == SensorType.Throughput &&
                 s.Name.Contains("Write", StringComparison.OrdinalIgnoreCase));
 
             if (writeSensor?.Value is float write)
             {
-                return write;
+                value = write;
+                return true;
             }
 
-            return GetWmiDiskWriteBytesPerSec() / (1024f * 1024f);
+            var wmiWrite = TryGetWmiDiskWriteBytesPerSec();
+            if (wmiWrite.HasValue)
+            {
+                value = wmiWrite.Value / (1024f * 1024f);
+                return true;
+            }
+
+            reason = "Disk write throughput sensor and WMI fallback did not return data.";
+            return false;
         }
 
-        private float GetWmiDiskPercentTime()
+        public float GetDiskWriteRateMb()
+            => TryGetDiskWriteRateMb(out var value, out _) ? value : 0f;
+
+        private float? TryGetWmiDiskPercentTime()
         {
             try
             {
@@ -260,10 +502,10 @@ namespace CoreCare.Services
             }
             catch { }
 
-            return 0f;
+            return null;
         }
 
-        private float GetWmiDiskReadBytesPerSec()
+        private float? TryGetWmiDiskReadBytesPerSec()
         {
             try
             {
@@ -277,10 +519,10 @@ namespace CoreCare.Services
             }
             catch { }
 
-            return 0f;
+            return null;
         }
 
-        private float GetWmiDiskWriteBytesPerSec()
+        private float? TryGetWmiDiskWriteBytesPerSec()
         {
             try
             {
@@ -294,7 +536,7 @@ namespace CoreCare.Services
             }
             catch { }
 
-            return 0f;
+            return null;
         }
 
         public void Dispose() => _computer.Close();

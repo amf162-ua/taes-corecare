@@ -147,6 +147,12 @@ namespace CoreCare.Services
             Console.WriteLine($"Timestamp: {registro.Timestamp:yyyy-MM-dd HH:mm:ss}");
             Console.WriteLine($"Score:     {registro.Score:F1}/10");
 
+            var unavailableReadings = registro.SensorReadings
+                .Where(reading => reading.Name.Contains("NO DISPONIBLE", StringComparison.OrdinalIgnoreCase))
+                .Select(reading => reading.Name)
+                .Distinct()
+                .ToList();
+
             if (options.ScanCPU)
             {
                 Console.WriteLine("\n[CPU]");
@@ -175,6 +181,15 @@ namespace CoreCare.Services
                 Console.WriteLine($"Carga media:      {registro.DiskLoad:F1} %");
                 Console.WriteLine($"Lectura media:    {registro.DiskReadRate:F2} MB/s");
                 Console.WriteLine($"Escritura media:  {registro.DiskWriteRate:F2} MB/s");
+            }
+
+            if (unavailableReadings.Any())
+            {
+                Console.WriteLine("\n[SENSORES NO DISPONIBLES]");
+                foreach (var unavailable in unavailableReadings)
+                {
+                    Console.WriteLine($"- {unavailable}");
+                }
             }
 
             Console.WriteLine("-------------------------------------------");
