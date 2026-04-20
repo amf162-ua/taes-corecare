@@ -28,9 +28,23 @@ namespace CoreCare.Views.Components
             mainWindow?.MainFrame.Navigate(new Pages.HistoryPage());
         }
 
+        // 👇 ¡AÑADIDO! Navegación para la página de Reportes
+        private void BtnReports_Click(object sender, RoutedEventArgs e)
+        {
+            var mainWindow = Window.GetWindow(this) as MainWindow;
+            mainWindow?.MainFrame.Navigate(new Pages.ReportsPage());
+        }
+
+        // 👇 ¡AÑADIDO! Navegación para el Gestor de Procesos
+        private void BtnProcesses_Click(object sender, RoutedEventArgs e)
+        {
+            var mainWindow = Window.GetWindow(this) as MainWindow;
+            mainWindow?.MainFrame.Navigate(new Pages.Processes());
+        }
+
         private void BtnLogin_Click(object sender, RoutedEventArgs e)
         {
-            // Aquí es donde abriríamos el LoginWindow que estuvimos viendo
+            // Aquí es donde abrimos el LoginWindow
             var loginWin = new Modals.LoginWindow();
             loginWin.Owner = Window.GetWindow(this);
             loginWin.ShowDialog();

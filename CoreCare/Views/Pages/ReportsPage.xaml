@@ -1,0 +1,75 @@
+<Page x:Class="CoreCare.Views.Pages.ReportsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="ReportsPage">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="30">
+            <Grid Margin="0,0,0,30">
+                <StackPanel>
+                    <TextBlock Text="REPORTES TÉCNICOS" FontSize="28" FontWeight="Bold" Foreground="White" FontFamily="{StaticResource FontHeading}"/>
+                    <TextBlock Text="Seguimiento de incidencias con fabricantes" Foreground="#717182" FontSize="14"/>
+                </StackPanel>
+                <Button Content="Filtrar Reportes" HorizontalAlignment="Right" VerticalAlignment="Center" 
+                        Padding="15,8" Background="#1C2030" Foreground="White" BorderBrush="#3300BCD4"/>
+            </Grid>
+
+            <ItemsControl x:Name="ReportsList">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="#121625" BorderBrush="#1A00BCD4" BorderThickness="1" CornerRadius="12" Margin="0,0,0,16" Padding="20">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,15">
+                                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                                        <Border Width="40" Height="40" Background="#1A00BCD4" CornerRadius="8" Margin="0,0,12,0">
+                                            <TextBlock Text="📄" VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="20"/>
+                                        </Border>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding BenchmarkName}" FontWeight="Bold" Foreground="White" FontSize="16"/>
+                                            <TextBlock Text="{Binding Date}" Foreground="#717182" FontSize="12"/>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <Border DockPanel.Dock="Right" Padding="10,4" CornerRadius="4" VerticalAlignment="Top">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="#33FFC107"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Status}" Value="in-review">
+                                                        <Setter Property="Background" Value="#332196F3"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="resolved">
+                                                        <Setter Property="Background" Value="#334CAF50"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Text="{Binding Status}" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                    </Border>
+                                </DockPanel>
+
+                                <TextBlock Grid.Row="1" Text="{Binding Description}" TextWrapping="Wrap" Foreground="#E4E8F0" Margin="0,0,0,20" LineHeight="20"/>
+
+                                <Border Grid.Row="2" Background="#0A0E1A" CornerRadius="8" Padding="15">
+                                    <DockPanel LastChildFill="False">
+                                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                                            <TextBlock Text="{Binding CompanyIcon}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Company}" Foreground="#00BCD4" VerticalAlignment="Center" FontWeight="Medium"/>
+                                        </StackPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding TicketId}" Foreground="#717182" VerticalAlignment="Center" FontFamily="Consolas"/>
+                                    </DockPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

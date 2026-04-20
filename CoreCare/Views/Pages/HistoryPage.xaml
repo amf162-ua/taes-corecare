@@ -1,0 +1,10 @@
+<Page x:Class="CoreCare.Views.Pages.HistoryPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:components="clr-namespace:CoreCare.Views.Components"
+      Title="HistoryPage">
+
+    <Grid Margin="0,32,0,0">
+        <components:BenchmarkHistory />
+    </Grid>
+</Page>
