@@ -33,6 +33,9 @@ namespace CoreCare.ViewModels
         private string _historyStatus = "Sin datos cargados.";
 
         [ObservableProperty]
+        private string _historyUserLabel = "Usuario: -";
+
+        [ObservableProperty]
         private string _degradationStatus = "Analisis de degradacion pendiente.";
 
         [ObservableProperty]
@@ -198,7 +201,8 @@ namespace CoreCare.ViewModels
             try
             {
                 using var db = new CoreCareDbContext();
-                int userId = GetOrCreateSystemUserId(db);
+                var currentUser = GetOrCreateSystemUser(db);
+                int userId = currentUser.Id;
 
                 var historyService = new BenchmarkHistoryService(db);
 
@@ -219,7 +223,11 @@ namespace CoreCare.ViewModels
                     HistoryItems.Add(item);
                 }
 
-                HistoryStatus = $"Usuario {userId}: {history.Count} registros en el rango {from:yyyy-MM-dd} a {to:yyyy-MM-dd}.";
+                string username = string.IsNullOrWhiteSpace(currentUser.username)
+                    ? currentUser.name
+                    : currentUser.username;
+                HistoryUserLabel = $"Usuario: {username}";
+                HistoryStatus = $"{history.Count} registros en el rango {from:yyyy-MM-dd} a {to:yyyy-MM-dd}.";
 
                 var trend = historyService.BuildTrend(history);
                 TrendStatus = BuildTrendStatus(trend);
@@ -233,10 +241,28 @@ namespace CoreCare.ViewModels
             catch (Exception ex)
             {
                 HistoryStatus = $"Error cargando historico: {ex.GetBaseException().Message}";
+                HistoryUserLabel = "Usuario: -";
                 DegradationStatus = "No se pudo calcular degradacion.";
                 TrendStatus = "No se pudo calcular tendencia.";
                 DegradationBrush = Brushes.Firebrick;
             }
+        }
+
+        [RelayCommand]
+        private void ShowHistoryDetails(RegistroBenchmark? registro)
+        {
+            if (registro == null)
+            {
+                return;
+            }
+
+            var detailsWindow = new BenchmarkDetailsWindow(registro)
+            {
+                Owner = Application.Current?.MainWindow,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+
+            detailsWindow.ShowDialog();
         }
 
         private static string BuildTrendStatus(IReadOnlyList<BenchmarkTrendPoint> trend)
@@ -330,12 +356,15 @@ namespace CoreCare.ViewModels
         }
 
         private static int GetOrCreateSystemUserId(CoreCareDbContext db)
+            => GetOrCreateSystemUser(db).Id;
+
+        private static User GetOrCreateSystemUser(CoreCareDbContext db)
         {
             var existingUser = db.Users.FirstOrDefault(user => user.IsActive);
 
             if (existingUser != null)
             {
-                return existingUser.Id;
+                return existingUser;
             }
 
             var systemUser = new User
@@ -352,7 +381,7 @@ namespace CoreCare.ViewModels
             db.Users.Add(systemUser);
             db.SaveChanges();
 
-            return systemUser.Id;
+            return systemUser;
         }
 
         public sealed class BenchmarkOptionItem

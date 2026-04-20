@@ -145,6 +145,7 @@
                             Command="{Binding LoadHistoryCommand}"/>
 
                     <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="8" Margin="0,10,0,10">
+                        <TextBlock Text="{Binding HistoryUserLabel}" FontWeight="SemiBold" Foreground="#333"/>
                         <TextBlock Text="{Binding HistoryStatus}" Foreground="#444"/>
                         <TextBlock Text="{Binding TrendStatus}" Foreground="#0D47A1" Margin="0,3,0,0"/>
                         <TextBlock Text="{Binding DegradationStatus}" FontWeight="SemiBold" Foreground="{Binding DegradationBrush}" Margin="0,3,0,0"/>
@@ -165,7 +166,16 @@
                             <DataGridTextColumn Header="GPU %" Binding="{Binding GpuLoad, StringFormat=\{0:F1\}}" Width="80"/>
                             <DataGridTextColumn Header="RAM %" Binding="{Binding RamLoad, StringFormat=\{0:F1\}}" Width="80"/>
                             <DataGridTextColumn Header="Disco %" Binding="{Binding DiskLoad, StringFormat=\{0:F1\}}" Width="80"/>
-                            <DataGridTextColumn Header="Usuario" Binding="{Binding UserId}" Width="80"/>
+                            <DataGridTemplateColumn Header="Detalle" Width="110">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Content="Ver detalles"
+                                                Padding="8,2"
+                                                Command="{Binding DataContext.ShowHistoryDetailsCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>
