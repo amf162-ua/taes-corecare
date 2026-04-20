@@ -22,5 +22,8 @@ namespace CoreCare.Models
         public float Score { get; set; }
         public int UserId { get; set; }
         public User User { get; set; } = null!;
+
+        // Relación con lecturas detalladas de sensores
+        public ICollection<SensorReading> SensorReadings { get; set; } = new List<SensorReading>();
     }
 }

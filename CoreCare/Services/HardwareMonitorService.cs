@@ -41,7 +41,8 @@ namespace CoreCare.Services
                 IsCpuEnabled = true,
                 IsGpuEnabled = true,
                 IsMemoryEnabled = true,
-                IsMotherboardEnabled = true
+                IsMotherboardEnabled = true,
+                IsStorageEnabled = true
             };
             _computer.Open();
 
@@ -79,13 +80,14 @@ namespace CoreCare.Services
 
             var coreClocks = cpu?.Sensors
                 .Where(s => s.SensorType == SensorType.Clock && s.Name.Contains("Core"))
+                .Where(s => s.Value.HasValue)
                 .ToList();
 
             float currentMhz = 0f;
 
             if (coreClocks != null && coreClocks.Any())
             {
-                currentMhz = (float)coreClocks.Average(c => c.Value);
+                currentMhz = coreClocks.Average(c => c.Value!.Value);
             }
 
             if (currentMhz == 0f)
@@ -98,7 +100,14 @@ namespace CoreCare.Services
 
         public void UpdateHardware()
         {
-            foreach (var hw in _computer.Hardware) hw.Update();
+            foreach (var hw in _computer.Hardware)
+            {
+                hw.Update();
+                foreach (var subHw in hw.SubHardware)
+                {
+                    subHw.Update();
+                }
+            }
         }
 
         public string GetUpTime()
@@ -154,8 +163,139 @@ namespace CoreCare.Services
 
         public float GetRamUsageGb() { var ram = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Memory); return ram?.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Data && s.Name == "Memory Used")?.Value ?? 0f; }
         public float GetRamAvailableGb() { var ram = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Memory); return ram?.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Data && s.Name == "Memory Available")?.Value ?? 0f; }
-        public float GetGpuLoad() { var gpu = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.GpuNvidia || h.HardwareType == HardwareType.GpuAmd); return gpu?.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Load && s.Value > 0)?.Value ?? 0f; }
-        public float GetGpuTemperature() { var gpu = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.GpuNvidia || h.HardwareType == HardwareType.GpuAmd); return gpu?.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Temperature && s.Value > 0)?.Value ?? 0f; }
+        public float GetRamLoad()
+        {
+            float used = GetRamUsageGb();
+            float available = GetRamAvailableGb();
+            float total = used + available;
+
+            if (total > 0f)
+            {
+                return (used / total) * 100f;
+            }
+
+            var ram = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Memory);
+            return ram?.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Load && s.Value >= 0)?.Value ?? 0f;
+        }
+
+        public float GetGpuLoad()
+        {
+            var gpu = _computer.Hardware.FirstOrDefault(h =>
+                h.HardwareType == HardwareType.GpuNvidia ||
+                h.HardwareType == HardwareType.GpuAmd ||
+                h.HardwareType == HardwareType.GpuIntel);
+
+            return gpu?.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Load && s.Value > 0)?.Value ?? 0f;
+        }
+
+        public float GetGpuTemperature()
+        {
+            var gpu = _computer.Hardware.FirstOrDefault(h =>
+                h.HardwareType == HardwareType.GpuNvidia ||
+                h.HardwareType == HardwareType.GpuAmd ||
+                h.HardwareType == HardwareType.GpuIntel);
+
+            return gpu?.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Temperature && s.Value > 0)?.Value ?? 0f;
+        }
+
+        public float GetDiskLoad()
+        {
+            var storage = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Storage);
+
+            var loadSensor = storage?.Sensors.FirstOrDefault(s =>
+                s.SensorType == SensorType.Load &&
+                s.Name.Contains("Used", StringComparison.OrdinalIgnoreCase));
+
+            if (loadSensor?.Value is float load)
+            {
+                return load;
+            }
+
+            return GetWmiDiskPercentTime();
+        }
+
+        public float GetDiskReadRateMb()
+        {
+            var storage = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Storage);
+
+            var readSensor = storage?.Sensors.FirstOrDefault(s =>
+                s.SensorType == SensorType.Throughput &&
+                s.Name.Contains("Read", StringComparison.OrdinalIgnoreCase));
+
+            if (readSensor?.Value is float read)
+            {
+                return read;
+            }
+
+            return GetWmiDiskReadBytesPerSec() / (1024f * 1024f);
+        }
+
+        public float GetDiskWriteRateMb()
+        {
+            var storage = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Storage);
+
+            var writeSensor = storage?.Sensors.FirstOrDefault(s =>
+                s.SensorType == SensorType.Throughput &&
+                s.Name.Contains("Write", StringComparison.OrdinalIgnoreCase));
+
+            if (writeSensor?.Value is float write)
+            {
+                return write;
+            }
+
+            return GetWmiDiskWriteBytesPerSec() / (1024f * 1024f);
+        }
+
+        private float GetWmiDiskPercentTime()
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher(
+                    "SELECT PercentDiskTime FROM Win32_PerfFormattedData_PerfDisk_LogicalDisk WHERE Name = '_Total'");
+
+                foreach (var item in searcher.Get())
+                {
+                    return Convert.ToSingle(item["PercentDiskTime"]);
+                }
+            }
+            catch { }
+
+            return 0f;
+        }
+
+        private float GetWmiDiskReadBytesPerSec()
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher(
+                    "SELECT DiskReadBytesPerSec FROM Win32_PerfFormattedData_PerfDisk_LogicalDisk WHERE Name = '_Total'");
+
+                foreach (var item in searcher.Get())
+                {
+                    return Convert.ToSingle(item["DiskReadBytesPerSec"]);
+                }
+            }
+            catch { }
+
+            return 0f;
+        }
+
+        private float GetWmiDiskWriteBytesPerSec()
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher(
+                    "SELECT DiskWriteBytesPerSec FROM Win32_PerfFormattedData_PerfDisk_LogicalDisk WHERE Name = '_Total'");
+
+                foreach (var item in searcher.Get())
+                {
+                    return Convert.ToSingle(item["DiskWriteBytesPerSec"]);
+                }
+            }
+            catch { }
+
+            return 0f;
+        }
 
         public void Dispose() => _computer.Close();
     }
