@@ -7,8 +7,14 @@ namespace CoreCare.Models
         [JsonPropertyName("cpu_usage_percent")]
         public double CpuUsagePercent { get; set; }
 
+        [JsonPropertyName("gpu_usage_percent")]
+        public double GpuUsagePercent { get; set; }
+
         [JsonPropertyName("cpu_temperature_c")]
         public double CpuTemperatureC { get; set; }
+
+        [JsonPropertyName("gpu_temperature_c")]
+        public double GpuTemperatureC { get; set; }
 
         [JsonPropertyName("ram_total_gb")]
         public double RamTotalGb { get; set; }

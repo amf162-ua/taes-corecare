@@ -118,11 +118,13 @@ namespace CoreCare.ViewModels
                 var telemetryData = new SystemTelemetryMock
                 {
                     CpuUsagePercent = (float)Math.Round(_hardwareService.GetCpuLoad(), 1, MidpointRounding.ToEven),
-                    CpuTemperatureC = (float)Math.Round(_hardwareService.GetGpuTemperature(), 1, MidpointRounding.ToEven),
+                    CpuTemperatureC = (float)Math.Round(_hardwareService.GetCpuTemperature().Value, 1, MidpointRounding.ToEven),
+                    GpuUsagePercent = (float)Math.Round(_hardwareService.GetGpuLoad(), 1, MidpointRounding.ToEven),
+                    GpuTemperatureC = (float)Math.Round(_hardwareService.GetGpuTemperature(), 1, MidpointRounding.ToEven),
                     RamTotalGb = ramTotal,
                     RamUsedGb = ramUsed,
                     DiskType = systemSpecs.DiskModel,
-                    DiskUsagePercent = 0
+                    DiskUsagePercent = (float)Math.Round(_hardwareService.GetDiskLoad(), 1, MidpointRounding.ToEven),
                 };
 
                 loadingWindow.UpdateProgress(40, "Generando recomendaciones con IA...");
