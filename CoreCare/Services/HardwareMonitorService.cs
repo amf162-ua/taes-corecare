@@ -121,6 +121,7 @@ namespace CoreCare.Services
         public TelemetryData GetCpuTemperature()
         {
             var cpu = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);
+            cpu?.Update();
             var sensor = cpu?.Sensors.FirstOrDefault(s => s.SensorType == SensorType.Temperature && s.Name.Contains("Core") && s.Value > 0);
             float rawTemp = sensor?.Value ?? GetWmiCpuTemperature();
 
@@ -207,6 +208,7 @@ namespace CoreCare.Services
         public float GetDiskLoad()
         {
             var storage = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Storage);
+            storage?.Update();
 
             var loadSensor = storage?.Sensors.FirstOrDefault(s =>
                 s.SensorType == SensorType.Load &&

@@ -135,7 +135,8 @@ namespace CoreCare.ViewModels
 
                 if (aiResponse.StartsWith("Error:"))
                 {
-                    recommendations.Add("Error al conectar con IA. Intenta más tarde.");
+                    //recommendations.Add("Error al conectar con IA. Intenta más tarde.");
+                    recommendations.Add(aiResponse);
                     MessageBox.Show("No se pudieron obtener recomendaciones de IA.\nEl servicio está temporalmente no disponible.", "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
                 else
