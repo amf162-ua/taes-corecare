@@ -2,7 +2,6 @@
 using System.Data;
 using System.Windows;
 using CoreCare.Data;
-using CoreCare.Services;
 
 namespace CoreCare
 {
@@ -23,15 +22,6 @@ namespace CoreCare
             using (var db = new CoreCareDbContext())
             {
                 db.Database.EnsureCreated();
-            }
-
-            bool runTerminalMenu = !e.Args.Contains("--ui", StringComparer.OrdinalIgnoreCase);
-
-            if (runTerminalMenu)
-            {
-                TerminalBenchmarkMenuService.RunInteractiveMenu();
-                Shutdown();
-                return;
             }
         }
     }

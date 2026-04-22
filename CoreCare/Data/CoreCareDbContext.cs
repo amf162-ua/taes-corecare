@@ -7,12 +7,26 @@ namespace CoreCare.Data
     // Persiste usuarios, resultados de benchmark y las lecturas detalladas de sensores
     public class CoreCareDbContext : DbContext
     {
+        public CoreCareDbContext()
+        {
+        }
+
+        public CoreCareDbContext(DbContextOptions<CoreCareDbContext> options)
+            : base(options)
+        {
+        }
+
         public DbSet<User> Users { get; set; }
         public DbSet<RegistroBenchmark> RegistrosBenchmark { get; set; }
         public DbSet<SensorReading> SensorReadings { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
-            => options.UseSqlite($"Data Source={ResolveDatabasePath()}");
+        {
+            if (!options.IsConfigured)
+            {
+                options.UseSqlite($"Data Source={ResolveDatabasePath()}");
+            }
+        }
 
         private static string ResolveDatabasePath()
         {
