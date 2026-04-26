@@ -7,7 +7,7 @@ namespace CoreCare.Views.Modals
     public partial class UserProfileWindow : Window
     {
         private HardwareProfile _hardwareData;
-        private HardwareProfile _backupData; // Para cancelar edición
+        private HardwareProfile _backupData;
         private bool _isEditing = false;
 
         public UserProfileWindow(string userName, bool isPremium)
@@ -16,12 +16,20 @@ namespace CoreCare.Views.Modals
 
             // Configurar datos de usuario
             TxtUserName.Text = userName;
+
+            // Si es premium, mostramos la medalla y ocultamos la sección de compra
             if (isPremium)
             {
                 PremiumBadge.Visibility = Visibility.Visible;
+                PremiumPurchaseSection.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                PremiumBadge.Visibility = Visibility.Collapsed;
+                PremiumPurchaseSection.Visibility = Visibility.Visible;
             }
 
-            // Inicializar y bindear los datos de hardware
+            // Inicializar datos de hardware (esto vendría de una DB normalmente)
             _hardwareData = new HardwareProfile
             {
                 Cpu = "Intel Core i9-13900K",
@@ -39,14 +47,35 @@ namespace CoreCare.Views.Modals
             this.Close();
         }
 
+        private void BtnUpgrade_Click(object sender, RoutedEventArgs e)
+        {
+            // Cerramos o minimizamos el perfil si quieres, pero lo mejor es abrirlo encima
+            var premiumWin = new PremiumWindow();
+            premiumWin.Owner = this; // Esta ventana es la dueña ahora
+
+            if (premiumWin.ShowDialog() == true)
+            {
+                var paymentWin = new PaymentWindow();
+                paymentWin.Owner = this;
+
+                if (paymentWin.ShowDialog() == true)
+                {
+                    App.IsPremium = true;
+
+                    // Actualizamos visualmente el perfil sin cerrarlo
+                    PremiumBadge.Visibility = Visibility.Visible;
+                    PremiumPurchaseSection.Visibility = Visibility.Collapsed;
+
+                    MessageBox.Show("¡Bienvenido a Premium!", "Éxito");
+                }
+            }
+        }
+
         private void BtnEditSave_Click(object sender, RoutedEventArgs e)
         {
             if (!_isEditing)
             {
-                // Entrar en modo edición
                 _isEditing = true;
-
-                // Guardar copia de seguridad por si cancelan
                 _backupData = new HardwareProfile
                 {
                     Cpu = _hardwareData.Cpu,
@@ -56,41 +85,40 @@ namespace CoreCare.Views.Modals
                     Motherboard = _hardwareData.Motherboard
                 };
 
-                // Cambiar UI
                 HardwareFormPanel.IsEnabled = true;
                 BtnEditSave.Content = "GUARDAR";
-                BtnEditSave.Background = new SolidColorBrush(Color.FromRgb(34, 139, 34)); // Verde
+                BtnEditSave.Background = new SolidColorBrush(Color.FromRgb(34, 139, 34));
                 BtnCancelEdit.Visibility = Visibility.Visible;
             }
             else
             {
-                // Guardar cambios
                 _isEditing = false;
                 HardwareFormPanel.IsEnabled = false;
                 BtnEditSave.Content = "EDITAR";
-                BtnEditSave.Background = new SolidColorBrush(Color.FromRgb(0, 139, 139)); // Cian oscuro
+                BtnEditSave.Background = new SolidColorBrush(Color.FromRgb(0, 139, 139));
                 BtnCancelEdit.Visibility = Visibility.Collapsed;
 
-                // Aquí podrías guardar _hardwareData en la base de datos
                 MessageBox.Show("Perfil de hardware actualizado correctamente.", "Guardado");
             }
         }
 
         private void BtnCancel_Click(object sender, RoutedEventArgs e)
         {
-            // Restaurar copia de seguridad
             _hardwareData.Cpu = _backupData.Cpu;
             _hardwareData.Gpu = _backupData.Gpu;
             _hardwareData.Ram = _backupData.Ram;
             _hardwareData.Storage = _backupData.Storage;
             _hardwareData.Motherboard = _backupData.Motherboard;
 
-            // Salir de modo edición
             _isEditing = false;
             HardwareFormPanel.IsEnabled = false;
             BtnEditSave.Content = "EDITAR";
             BtnEditSave.Background = new SolidColorBrush(Color.FromRgb(0, 139, 139));
             BtnCancelEdit.Visibility = Visibility.Collapsed;
+
+            // Refrescar binding
+            HardwareFormPanel.DataContext = null;
+            HardwareFormPanel.DataContext = _hardwareData;
         }
     }
 }

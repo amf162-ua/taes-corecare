@@ -66,12 +66,12 @@
 
                                             <StackPanel Grid.Column="0">
                                                 <TextBlock Text="{Binding CpuUsage, StringFormat='CPU: {0}%'}" Foreground="White" FontSize="11" Margin="0,0,0,2"/>
-                                                <ProgressBar Value="{Binding CpuUsage}" Maximum="100" Height="6" Background="#0a0e1a" Foreground="{Binding CpuColorBrush}" BorderThickness="0"/>
+                                                <ProgressBar Value="{Binding CpuUsage, Mode=OneWay}" Maximum="100" Height="6" Background="#0a0e1a" Foreground="{Binding CpuColorBrush}" BorderThickness="0"/>
                                             </StackPanel>
 
                                             <StackPanel Grid.Column="2">
                                                 <TextBlock Text="{Binding RamUsage, StringFormat='RAM: {0} GB'}" Foreground="White" FontSize="11" Margin="0,0,0,2"/>
-                                                <ProgressBar Value="{Binding RamProgress}" Maximum="100" Height="6" Background="#0a0e1a" Foreground="Purple" BorderThickness="0"/>
+                                                <ProgressBar Value="{Binding RamProgress, Mode=OneWay}" Maximum="100" Height="6" Background="#0a0e1a" Foreground="Purple" BorderThickness="0"/>
                                             </StackPanel>
                                         </Grid>
                                     </StackPanel>

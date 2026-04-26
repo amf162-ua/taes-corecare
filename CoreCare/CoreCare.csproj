@@ -17,7 +17,6 @@
 	</ItemGroup>
 	<ItemGroup>
 		<Folder Include="Styles\" />
-		<Folder Include="Views\Pages\" />
 		<Folder Include="ImporteFigma\" />
 	</ItemGroup>
 </Project>

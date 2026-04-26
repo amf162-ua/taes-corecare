@@ -42,5 +42,10 @@ namespace CoreCare.Views.Pages
 
             ReportsList.ItemsSource = mockReports;
         }
+
+        private void Button_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+
+        }
     }
 }

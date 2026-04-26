@@ -1,20 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
+﻿using System.Windows;
+
 namespace CoreCare.Views.Modals
 {
     public partial class LoginWindow : Window
     {
+        // Esta propiedad la mantenemos por si la necesitas, 
+        // pero ahora usamos App.CurrentUsername para todo el programa
         public string UserName { get; private set; }
 
         public LoginWindow()
@@ -24,17 +15,33 @@ namespace CoreCare.Views.Modals
 
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
+            // Si cerramos sin loguear, el DialogResult es falso por defecto
+            this.DialogResult = false;
             this.Close();
         }
 
-        // Aquí simulas el handleLogin de tu archivo original
         private void BtnLogin_Click(object sender, RoutedEventArgs e)
         {
+            // 1. Validamos que el campo no esté vacío
             if (!string.IsNullOrEmpty(TxtLoginEmail.Text))
             {
+                // 2. Extraemos el nombre (lo que hay antes del @)
                 UserName = TxtLoginEmail.Text.Split('@')[0];
-                this.DialogResult = true; // Indica que el login fue exitoso
+
+                // 3. ACTUALIZAMOS EL ESTADO GLOBAL (Muy importante)
+                // Esto es lo que permite que el Header cambie a modo "Perfil"
+                App.IsUserLoggedIn = true;
+                App.CurrentUsername = UserName;
+
+                // 4. Cerramos con éxito
+                // Establecer DialogResult en 'true' hace que el ShowDialog() 
+                // del Header devuelva verdadero y ejecute 'ActualizarInterfaz()'
+                this.DialogResult = true;
                 this.Close();
+            }
+            else
+            {
+                MessageBox.Show("Por favor, introduce un email válido.", "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
     }

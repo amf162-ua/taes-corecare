@@ -10,8 +10,8 @@
                     <TextBlock Text="REPORTES TÉCNICOS" FontSize="28" FontWeight="Bold" Foreground="White" FontFamily="{StaticResource FontHeading}"/>
                     <TextBlock Text="Seguimiento de incidencias con fabricantes" Foreground="#717182" FontSize="14"/>
                 </StackPanel>
-                <Button Content="Filtrar Reportes" HorizontalAlignment="Right" VerticalAlignment="Center" 
-                        Padding="15,8" Background="#1C2030" Foreground="White" BorderBrush="#3300BCD4"/>
+                <Button Content="Filtrar Reportes" HorizontalAlignment="Right" VerticalAlignment="Top" 
+                        Padding="15,8" Background="#1C2030" Foreground="White" BorderBrush="#3300BCD4" Margin="0,113,0,0" Click="Button_Click"/>
             </Grid>
 
             <ItemsControl x:Name="ReportsList">

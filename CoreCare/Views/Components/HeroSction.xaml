@@ -7,13 +7,6 @@
              d:DesignHeight="600" d:DesignWidth="800">
 
     <UserControl.Resources>
-        <!-- Colores para las categorías -->
-        <SolidColorBrush x:Key="OrangeColor" Color="#F97316"/>
-        <SolidColorBrush x:Key="CyanColor" Color="#06B6D4"/>
-        <SolidColorBrush x:Key="PurpleColor" Color="#A855F7"/>
-        <SolidColorBrush x:Key="EmeraldColor" Color="#10B981"/>
-
-        <!-- Estilo para tarjetas de categoría -->
         <Style x:Key="CategoryCardStyle" TargetType="Border">
             <Setter Property="Background" Value="#2D1C2030"/>
             <Setter Property="CornerRadius" Value="12"/>
@@ -40,7 +33,6 @@
     </UserControl.Resources>
 
     <Grid>
-        <!-- Fondo gradiente -->
         <Grid.Background>
             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                 <GradientStop Offset="0" Color="#0A0E1A"/>
@@ -49,7 +41,6 @@
             </LinearGradientBrush>
         </Grid.Background>
 
-        <!-- Grid pattern -->
         <Grid>
             <Grid.Background>
                 <DrawingBrush Viewport="0,0,50,50" ViewportUnits="Absolute" TileMode="Tile">
@@ -76,7 +67,6 @@
             </Grid.Background>
         </Grid>
 
-        <!-- Efectos Glow -->
         <Ellipse Width="384" Height="384" Fill="#33F97316" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,150,0,0">
             <Ellipse.Effect>
                 <BlurEffect Radius="120"/>
@@ -89,27 +79,17 @@
             </Ellipse.Effect>
         </Ellipse>
 
-        <!-- Contenido principal -->
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel HorizontalAlignment="Center" MaxWidth="1024" Margin="0,80,0,80">
 
-                <!-- Logo -->
                 <Border HorizontalAlignment="Center" Margin="0,0,0,32">
                     <Border.Effect>
                         <DropShadowEffect BlurRadius="40" ShadowDepth="0" Color="#F97316" Opacity="0.5"/>
                     </Border.Effect>
-                    <!-- Aquí iría tu logo como imagen -->
                     <TextBlock Text="⚡" FontSize="100" Foreground="#F97316"/>
                 </Border>
 
-                <!-- Título CORE CARE -->
-                <TextBlock Text="CORE CARE" 
-                          HorizontalAlignment="Center"
-                          FontSize="72" 
-                          FontWeight="Black"
-                          FontFamily="Orbitron"
-                          Margin="0,0,0,16"
-                          >
+                <TextBlock Text="CORE CARE" HorizontalAlignment="Center" FontSize="72" FontWeight="Black" Margin="0,0,0,16">
                     <TextBlock.Foreground>
                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
                             <GradientStop Offset="0" Color="#F97316"/>
@@ -119,29 +99,33 @@
                     </TextBlock.Foreground>
                 </TextBlock>
 
-                <!-- Subtítulo -->
-                <TextBlock Text="POWERED BY AXIOM WORKS"
-                          HorizontalAlignment="Center"
-                          FontSize="16"
-                          FontFamily="Rajdhani"
-                          Foreground="#B306B6D4"
-                          Margin="0,0,0,24"
-                          />
+                <TextBlock Text="POWERED BY AXIOM WORKS" HorizontalAlignment="Center" FontSize="16" Foreground="#B306B6D4" Margin="0,0,0,24"/>
 
-                <!-- Descripción -->
-                <TextBlock HorizontalAlignment="Center"
-                          TextAlignment="Center"
-                          FontSize="20"
-                          FontFamily="Rajdhani"
-                          Foreground="#D1D5DB"
-                          Margin="0,0,0,48"
-                          TextWrapping="Wrap">
+                <TextBlock HorizontalAlignment="Center" TextAlignment="Center" FontSize="20" Foreground="#D1D5DB" Margin="0,0,0,48" TextWrapping="Wrap">
                     Sistema profesional de benchmarking de última generación.<LineBreak/>
                     Evaluación exhaustiva de rendimiento con precisión absoluta.
                 </TextBlock>
 
-                <!-- Grid de categorías -->
-                <ItemsControl x:Name="CategoriesGrid" Margin="0,64,0,0">
+                <ItemsControl x:Name="FeaturesList" Margin="0,0,0,60">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="#0D1117" BorderBrush="#1A00FFFF" BorderThickness="1" CornerRadius="10" Padding="20" Margin="10" Width="180">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Icon}" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                                    <TextBlock Text="{Binding Title}" Foreground="White" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Desc}" Foreground="Gray" FontSize="11" TextAlignment="Center" Margin="0,5,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <ItemsControl x:Name="CategoriesGrid" Margin="0,10,0,0">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <UniformGrid Columns="4" HorizontalAlignment="Center"/>
@@ -150,40 +134,46 @@
 
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Style="{StaticResource CategoryCardStyle}" 
-                                   Margin="8"
-                                   BorderBrush="{Binding BorderColor}">
+                            <Border Style="{StaticResource CategoryCardStyle}" Margin="8" BorderBrush="#3306B6D4">
                                 <StackPanel>
-                                    <Border Width="64" 
-                                           Height="64" 
-                                           CornerRadius="8"
-                                           Margin="0,0,0,12"
-                                           HorizontalAlignment="Center">
-                                        <Border.Background>
-                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                <GradientStop Offset="0" Color="{Binding ColorStart}"/>
-                                                <GradientStop Offset="1" Color="{Binding ColorEnd}"/>
-                                            </LinearGradientBrush>
-                                        </Border.Background>
-                                        <TextBlock Text="{Binding Icon}" 
-                                                  FontSize="32" 
-                                                  Foreground="{Binding IconColor}"
-                                                  HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center"/>
+                                    <Border Width="64" Height="64" CornerRadius="8" Margin="0,0,0,12" Background="#1106B6D4" HorizontalAlignment="Center">
+                                        <TextBlock Text="{Binding Icon}" FontSize="32" Foreground="#06B6D4" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
-
-                                    <TextBlock Text="{Binding Label}"
-                                              HorizontalAlignment="Center"
-                                              FontFamily="Orbitron"
-                                              FontWeight="Bold"
-                                              FontSize="14"
-                                              Foreground="{Binding LabelColor}"
-                                              />
+                                    <TextBlock Text="{Binding Label}" HorizontalAlignment="Center" FontWeight="Bold" FontSize="14" Foreground="White"/>
                                 </StackPanel>
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                <Button x:Name="BtnEnter" Click="BtnEnter_Click" Width="320" Height="65" Cursor="Hand" Background="Transparent" BorderBrush="#06B6D4" BorderThickness="2">
+                    <Button.Template>
+                        <ControlTemplate TargetType="{x:Type Button}">
+                            <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4">
+                                <Grid>
+                                    <Border x:Name="glow" Opacity="0" Background="#06B6D4">
+                                        <Border.Effect>
+                                            <BlurEffect Radius="15"/>
+                                        </Border.Effect>
+                                    </Border>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <TextBlock Text="[ " Foreground="#06B6D4" FontSize="22" VerticalAlignment="Center" FontWeight="Bold"/>
+                                        <TextBlock Text="ACCEDER AL TERMINAL" Foreground="White" FontSize="18" FontWeight="Black" VerticalAlignment="Center" Margin="10,0"/>
+                                        <TextBlock Text=" ]" Foreground="#06B6D4" FontSize="22" VerticalAlignment="Center" FontWeight="Bold"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="glow" Property="Opacity" Value="0.15"/>
+                                    <Setter Property="BorderBrush" Value="White"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="border" Property="Background" Value="#3306B6D4"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
 
             </StackPanel>
         </ScrollViewer>
