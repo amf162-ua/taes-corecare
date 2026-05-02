@@ -1,4 +1,7 @@
 ﻿using System;
+using OxyPlot;
+using OxyPlot.Series;
+using OxyPlot.Axes;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CoreCare.Models;
 using CoreCare.Services;
@@ -40,6 +43,46 @@ namespace CoreCare.ViewModels
 
         [ObservableProperty]
         private string _trendStatus = "Tendencia pendiente.";
+
+        [ObservableProperty]
+        private PlotModel? _trendPlotModel;
+
+        [ObservableProperty]
+        private PlotModel? _scoreBarPlotModel;
+
+        // last subset used for plotting (most recent up to 10 runs)
+        public List<RegistroBenchmark> LastHistorySubset { get; private set; } = new();
+
+        [ObservableProperty]
+        private string _historyHoverInfo = string.Empty;
+
+        [ObservableProperty]
+        private string _kpiCurrentScore = "—";
+
+        [ObservableProperty]
+        private string _kpiDegradation = "—";
+
+        [ObservableProperty]
+        private string _kpiWorstComponent = "—";
+
+        [ObservableProperty]
+        private string _kpiConsistency = "—";
+
+        // heatmap: list of (MetricName, List<values>)
+        public List<(string Name, List<double> Values)> HeatmapData { get; private set; } = new();
+
+        // small multiples: store mini chart models
+        [ObservableProperty]
+        private PlotModel? _miniCpuPlot;
+
+        [ObservableProperty]
+        private PlotModel? _miniGpuPlot;
+
+        [ObservableProperty]
+        private PlotModel? _miniRamPlot;
+
+        [ObservableProperty]
+        private PlotModel? _miniDiskPlot;
 
         [ObservableProperty]
         private Brush _degradationBrush = Brushes.DimGray;
@@ -215,7 +258,28 @@ namespace CoreCare.ViewModels
                     return;
                 }
 
-                var history = historyService.GetHistory(userId, from, to, 200);
+                var history = historyService.GetHistory(userId, from, to, 200)
+                    .OrderByDescending(h => h.Timestamp)
+                    .ToList();
+
+                var orderedForLabels = history
+                    .OrderBy(h => h.Timestamp)
+                    .ToList();
+
+                for (int i = 0; i < orderedForLabels.Count; i++)
+                {
+                    orderedForLabels[i].RunLabel = $"R{i + 1}";
+                }
+
+                var runLabelById = orderedForLabels.ToDictionary(item => item.Id, item => item.RunLabel);
+
+                for (int i = 0; i < history.Count; i++)
+                {
+                    if (runLabelById.TryGetValue(history[i].Id, out var runLabel))
+                    {
+                        history[i].RunLabel = runLabel;
+                    }
+                }
 
                 HistoryItems.Clear();
                 foreach (var item in history)
@@ -231,6 +295,23 @@ namespace CoreCare.ViewModels
 
                 var trend = historyService.BuildTrend(history);
                 TrendStatus = BuildTrendStatus(trend);
+
+                // limit to last 10 runs for charts, then restore chronological order
+                var subset = history
+                    .Take(10)
+                    .OrderBy(h => h.Timestamp)
+                    .ToList();
+                LastHistorySubset = subset;
+
+                // build chart models from subset
+                TrendPlotModel = BuildTrendPlotModel(subset);
+                ScoreBarPlotModel = BuildScoreBarPlotModel(subset);
+
+                // build new layout: KPIs, mini charts, heatmap
+                // Build heatmap FIRST so data is ready when MiniCpuPlot PropertyChanged triggers DrawHeatmap
+                BuildHeatmap(subset);
+                BuildKPIs(subset);
+                BuildMiniCharts(subset);
 
                 var degradation = historyService.AnalyzeDegradation(history);
                 DegradationStatus = degradation.Message;
@@ -388,6 +469,238 @@ namespace CoreCare.ViewModels
         {
             public required string Code { get; set; }
             public required string Label { get; set; }
+        }
+
+        private PlotModel BuildTrendPlotModel(IReadOnlyCollection<RegistroBenchmark> history)
+        {
+            var model = new PlotModel { Title = "Tendencias por métrica" };
+
+            var dateAxis = new DateTimeAxis
+            {
+                Position = AxisPosition.Bottom,
+                StringFormat = "yyyy-MM-dd",
+                IntervalType = DateTimeIntervalType.Days,
+                MajorGridlineStyle = LineStyle.Solid,
+                MinorGridlineStyle = LineStyle.None,
+                Angle = 45
+            };
+
+            var valueAxis = new LinearAxis
+            {
+                Position = AxisPosition.Left,
+                Minimum = 0,
+                Maximum = 100,
+                Title = "% / magnitud",
+                MajorGridlineStyle = LineStyle.Solid,
+                MinorGridlineStyle = LineStyle.Dot
+            };
+
+            model.Axes.Add(dateAxis);
+            model.Axes.Add(valueAxis);
+
+            var cpuSeries = new LineSeries { Title = "CPU %", Color = OxyColors.SkyBlue, StrokeThickness = 2 };
+            var gpuSeries = new LineSeries { Title = "GPU %", Color = OxyColors.Orange, StrokeThickness = 2 };
+            var ramSeries = new LineSeries { Title = "RAM %", Color = OxyColors.MediumSeaGreen, StrokeThickness = 2 };
+            var diskSeries = new LineSeries { Title = "Disco %", Color = OxyColors.PaleVioletRed, StrokeThickness = 2 };
+
+            // assume 'history' is already ordered and limited
+            foreach (var r in history)
+            {
+                double x = DateTimeAxis.ToDouble(r.Timestamp);
+                cpuSeries.Points.Add(new DataPoint(x, r.CpuLoad));
+                gpuSeries.Points.Add(new DataPoint(x, r.GpuLoad));
+                ramSeries.Points.Add(new DataPoint(x, r.RamLoad));
+                diskSeries.Points.Add(new DataPoint(x, r.DiskLoad));
+            }
+
+            model.Series.Add(cpuSeries);
+            model.Series.Add(gpuSeries);
+            model.Series.Add(ramSeries);
+            model.Series.Add(diskSeries);
+
+            // show trackers on hover with a concise format
+            cpuSeries.TrackerFormatString = "{0}\n{1:yyyy-MM-dd}: CPU={2:0.0}%";
+            gpuSeries.TrackerFormatString = "{0}\n{1:yyyy-MM-dd}: GPU={2:0.0}%";
+            ramSeries.TrackerFormatString = "{0}\n{1:yyyy-MM-dd}: RAM={2:0.0}%";
+            diskSeries.TrackerFormatString = "{0}\n{1:yyyy-MM-dd}: Disco={2:0.0}%";
+
+            return model;
+        }
+
+        private PlotModel BuildScoreBarPlotModel(IReadOnlyCollection<RegistroBenchmark> history)
+        {
+            var model = new PlotModel { Title = "Score por ejecución" };
+
+            var categoryAxis = new CategoryAxis { Position = AxisPosition.Bottom, Angle = 45 };
+            var valueAxis = new LinearAxis { Position = AxisPosition.Left, Minimum = 0, Maximum = 10, Title = "Score (0-10)" };
+
+            var columnSeries = new BarSeries { StrokeColor = OxyColors.Black, StrokeThickness = 1, FillColor = OxyColors.SteelBlue };
+
+            var ordered = history.ToList();
+            foreach (var r in ordered)
+            {
+                categoryAxis.Labels.Add(r.Timestamp.ToString("yyyy-MM-dd"));
+
+                // color by performance tier
+                OxyColor color;
+                if (r.Score >= 7.5f) color = OxyColor.FromRgb(34, 197, 94); // green
+                else if (r.Score >= 5f) color = OxyColor.FromRgb(234, 179, 8); // yellow
+                else color = OxyColor.FromRgb(220, 38, 38); // red
+
+                var item = new BarItem(r.Score) { Color = color };
+                columnSeries.Items.Add(item);
+            }
+
+            // For horizontal bars, swap axes: category on left, value at bottom
+            var categoryAxisLeft = new CategoryAxis { Position = AxisPosition.Left };
+            foreach (var lbl in categoryAxis.Labels) categoryAxisLeft.Labels.Add(lbl);
+            var valueAxisBottom = new LinearAxis { Position = AxisPosition.Bottom, Minimum = 0, Maximum = 10, Title = "Score (0-10)" };
+
+            model.Axes.Add(categoryAxisLeft);
+            model.Axes.Add(valueAxisBottom);
+            model.Series.Add(columnSeries);
+
+            return model;
+        }
+
+        private void BuildKPIs(IReadOnlyCollection<RegistroBenchmark> history)
+        {
+            if (history.Count == 0)
+            {
+                KpiCurrentScore = "—";
+                KpiDegradation = "—";
+                KpiWorstComponent = "—";
+                KpiConsistency = "—";
+                return;
+            }
+
+            var ordered = history.OrderBy(h => h.Timestamp).ToList();
+
+            // Current score: last run
+            var lastRun = ordered.Last();
+            KpiCurrentScore = $"{lastRun.Score:F1} / 10";
+
+            // Degradation: first vs last
+            var firstRun = ordered.First();
+            float degradationPercent = firstRun.Score > 0 ? ((lastRun.Score - firstRun.Score) / firstRun.Score) * 100 : 0;
+            KpiDegradation = $"{degradationPercent:+0.0;-0.0}%";
+
+            // Worst component: which metric has largest variance or drop
+            var cpuVar = ordered.Select(h => h.CpuLoad).DefaultIfEmpty(0).ToList();
+            var gpuVar = ordered.Select(h => h.GpuLoad).DefaultIfEmpty(0).ToList();
+            var ramVar = ordered.Select(h => h.RamLoad).DefaultIfEmpty(0).ToList();
+            var diskVar = ordered.Select(h => h.DiskLoad).DefaultIfEmpty(0).ToList();
+
+            var cpuSD = VarianceDouble(cpuVar);
+            var gpuSD = VarianceDouble(gpuVar);
+            var ramSD = VarianceDouble(ramVar);
+            var diskSD = VarianceDouble(diskVar);
+
+            var components = new[] { ("CPU", cpuSD), ("GPU", gpuSD), ("RAM", ramSD), ("Disk", diskSD) };
+            KpiWorstComponent = components.OrderByDescending(x => x.Item2).First().Item1;
+
+            // Consistency: inverse of coefficient of variation
+            var scores = ordered.Select(h => (double)h.Score).ToList();
+            var mean = scores.Average();
+            var stdev = StandardDeviation(scores);
+            double consistency = mean > 0 && stdev > 0 ? Math.Max(0, 100 - (stdev / mean) * 100) : 100;
+            KpiConsistency = $"{consistency:F0}%";
+        }
+
+        private void BuildMiniCharts(IReadOnlyCollection<RegistroBenchmark> history)
+        {
+            if (history.Count == 0)
+            {
+                MiniCpuPlot = null;
+                MiniGpuPlot = null;
+                MiniRamPlot = null;
+                MiniDiskPlot = null;
+                return;
+            }
+
+            var ordered = history.OrderBy(h => h.Timestamp).ToList();
+
+            var runLabels = ordered.Select(h => h.RunLabel ?? string.Empty).ToList();
+
+            MiniCpuPlot = BuildMiniPlot("CPU %", ordered.Select(h => (double)h.CpuLoad).ToList(), runLabels, OxyColors.DarkCyan, OxyColor.FromArgb(30, 0, 105, 111));
+            MiniGpuPlot = BuildMiniPlot("GPU %", ordered.Select(h => (double)h.GpuLoad).ToList(), runLabels, OxyColors.Orange, OxyColor.FromArgb(40, 218, 113, 1));
+            MiniRamPlot = BuildMiniPlot("RAM %", ordered.Select(h => (double)h.RamLoad).ToList(), runLabels, OxyColors.Red, OxyColor.FromArgb(30, 161, 53, 68));
+            MiniDiskPlot = BuildMiniPlot("Disk %", ordered.Select(h => (double)h.DiskLoad).ToList(), runLabels, OxyColors.Gold, OxyColor.FromArgb(40, 218, 113, 1));
+        }
+
+        private PlotModel BuildMiniPlot(string title, List<double> values, List<string> runLabels, OxyColor lineColor, OxyColor fillColor)
+        {
+            var model = new PlotModel { Title = title, TitleFontSize = 12 };
+            var categoryAxis = new CategoryAxis
+            {
+                Position = AxisPosition.Bottom,
+                IsAxisVisible = true,
+                IsPanEnabled = false,
+                IsZoomEnabled = false,
+                GapWidth = 0.2,
+                IsTickCentered = true,
+                TextColor = OxyColors.Gray,
+                TickStyle = TickStyle.None,
+            };
+            categoryAxis.Labels.AddRange(runLabels);
+            model.Axes.Add(categoryAxis);
+            model.Axes.Add(new LinearAxis { Position = AxisPosition.Left, IsAxisVisible = false, IsPanEnabled = false, IsZoomEnabled = false });
+
+            var series = new LineSeries
+            {
+                Color = lineColor,
+                StrokeThickness = 2,
+                DataFieldX = null,
+                DataFieldY = null,
+                TrackerFormatString = "{0}\nValor: {4:F1}%",
+                CanTrackerInterpolatePoints = true
+            };
+
+            for (int i = 0; i < values.Count; i++)
+            {
+                series.Points.Add(new DataPoint(i, values[i]));
+            }
+
+            model.Series.Add(series);
+            return model;
+        }
+
+        private void BuildHeatmap(IReadOnlyCollection<RegistroBenchmark> history)
+        {
+            HeatmapData.Clear();
+
+            if (history.Count == 0) return;
+
+            var ordered = history
+                .OrderByDescending(h => h.Timestamp)
+                .Take(10)
+                .OrderBy(h => h.Timestamp)
+                .ToList();
+
+            var cpuValues = ordered.Select(h => (double)h.CpuLoad).ToList();
+            var gpuValues = ordered.Select(h => (double)h.GpuLoad).ToList();
+            var ramValues = ordered.Select(h => (double)h.RamLoad).ToList();
+            var diskValues = ordered.Select(h => (double)h.DiskLoad).ToList();
+
+            HeatmapData.Add(("CPU", cpuValues));
+            HeatmapData.Add(("GPU", gpuValues));
+            HeatmapData.Add(("RAM", ramValues));
+            HeatmapData.Add(("Disk", diskValues));
+        }
+
+        private static double StandardDeviation(IReadOnlyList<double> values)
+        {
+            if (values.Count < 2) return 0;
+            double mean = values.Average();
+            double sumSquaredDiff = values.Sum(x => Math.Pow(x - mean, 2));
+            return Math.Sqrt(sumSquaredDiff / values.Count);
+        }
+
+        private static double VarianceDouble(IReadOnlyList<float> values)
+        {
+            if (values.Count < 2) return 0;
+            var doubleValues = values.Select(v => (double)v).ToList();
+            return StandardDeviation(doubleValues);
         }
     }
 }
