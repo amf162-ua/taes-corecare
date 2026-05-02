@@ -159,36 +159,36 @@
                             <!-- KPI: Current Score -->
                             <Border Grid.Column="0" Background="White" BorderBrush="#d4d1ca" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,8,0">
                                 <StackPanel>
-                                    <TextBlock Text="Current Score" FontSize="10" Foreground="#7a7974" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Puntuación Actual" FontSize="10" Foreground="#7a7974" FontWeight="SemiBold"/>
                                     <TextBlock Text="{Binding KpiCurrentScore}" FontSize="28" FontWeight="Bold" Foreground="#01696f" Margin="0,6,0,0"/>
-                                    <TextBlock Text="Last run status" FontSize="11" Foreground="#7a7974" Margin="0,4,0,0"/>
+                                    <TextBlock Text="Estado última ejecución" FontSize="11" Foreground="#7a7974" Margin="0,4,0,0"/>
                                 </StackPanel>
                             </Border>
 
                             <!-- KPI: Degradation -->
                             <Border Grid.Column="1" Background="White" BorderBrush="#d4d1ca" BorderThickness="1" CornerRadius="8" Padding="16" Margin="8,0,8,0">
                                 <StackPanel>
-                                    <TextBlock Text="Degradation" FontSize="10" Foreground="#7a7974" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Degradación" FontSize="10" Foreground="#7a7974" FontWeight="SemiBold"/>
                                     <TextBlock Text="{Binding KpiDegradation}" FontSize="28" FontWeight="Bold" Foreground="#a13544" Margin="0,6,0,0"/>
-                                    <TextBlock Text="First vs last run" FontSize="11" Foreground="#7a7974" Margin="0,4,0,0"/>
+                                    <TextBlock Text="Primera vs última ejecución" FontSize="11" Foreground="#7a7974" Margin="0,4,0,0"/>
                                 </StackPanel>
                             </Border>
 
                             <!-- KPI: Worst Component -->
                             <Border Grid.Column="2" Background="White" BorderBrush="#d4d1ca" BorderThickness="1" CornerRadius="8" Padding="16" Margin="8,0,8,0">
                                 <StackPanel>
-                                    <TextBlock Text="Worst Component" FontSize="10" Foreground="#7a7974" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Componente Peor" FontSize="10" Foreground="#7a7974" FontWeight="SemiBold"/>
                                     <TextBlock Text="{Binding KpiWorstComponent}" FontSize="28" FontWeight="Bold" Foreground="#da7101" Margin="0,6,0,0"/>
-                                    <TextBlock Text="Largest variance" FontSize="11" Foreground="#7a7974" Margin="0,4,0,0"/>
+                                    <TextBlock Text="Mayor varianza" FontSize="11" Foreground="#7a7974" Margin="0,4,0,0"/>
                                 </StackPanel>
                             </Border>
 
                             <!-- KPI: Consistency -->
                             <Border Grid.Column="3" Background="White" BorderBrush="#d4d1ca" BorderThickness="1" CornerRadius="8" Padding="16" Margin="8,0,0,0">
                                 <StackPanel>
-                                    <TextBlock Text="Consistency" FontSize="10" Foreground="#7a7974" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Consistencia" FontSize="10" Foreground="#7a7974" FontWeight="SemiBold"/>
                                     <TextBlock Text="{Binding KpiConsistency}" FontSize="28" FontWeight="Bold" Foreground="#437a22" Margin="0,6,0,0"/>
-                                    <TextBlock Text="Run clustering" FontSize="11" Foreground="#7a7974" Margin="0,4,0,0"/>
+                                    <TextBlock Text="Agrupación de ejecuciones" FontSize="11" Foreground="#7a7974" Margin="0,4,0,0"/>
                                 </StackPanel>
                             </Border>
                         </Grid>
@@ -203,8 +203,8 @@
                             <!-- Small Multiples Section -->
                             <Border Grid.Column="0" Background="White" BorderBrush="#d4d1ca" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,8,0">
                                 <StackPanel>
-                                    <TextBlock Text="Metric Trends" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                    <TextBlock Text="Line chart for each metric" FontSize="11" Foreground="#7a7974" Margin="0,0,0,12"/>
+                                    <TextBlock Text="Tendencias de Métricas" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Gráfico de línea para cada métrica" FontSize="11" Foreground="#7a7974" Margin="0,0,0,12"/>
 
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -217,13 +217,45 @@
                                         </Grid.RowDefinitions>
 
                                         <!-- CPU Chart -->
-                                        <oxy:PlotView Grid.Row="0" Grid.Column="0" Model="{Binding MiniCpuPlot}" Margin="0,0,8,8"/>
+                                        <oxy:PlotView x:Name="CpuPlotView" Grid.Row="0" Grid.Column="0" Model="{Binding MiniCpuPlot}" Margin="0,0,8,8">
+                                            <oxy:PlotView.DefaultTrackerTemplate>
+                                                <ControlTemplate>
+                                                    <Border Background="#CC222222" CornerRadius="6" Padding="8">
+                                                        <TextBlock Text="{Binding Text}" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </oxy:PlotView.DefaultTrackerTemplate>
+                                        </oxy:PlotView>
                                         <!-- GPU Chart -->
-                                        <oxy:PlotView Grid.Row="0" Grid.Column="1" Model="{Binding MiniGpuPlot}" Margin="8,0,0,8"/>
+                                        <oxy:PlotView x:Name="GpuPlotView" Grid.Row="0" Grid.Column="1" Model="{Binding MiniGpuPlot}" Margin="8,0,0,8">
+                                            <oxy:PlotView.DefaultTrackerTemplate>
+                                                <ControlTemplate>
+                                                    <Border Background="#CC222222" CornerRadius="6" Padding="8">
+                                                        <TextBlock Text="{Binding Text}" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </oxy:PlotView.DefaultTrackerTemplate>
+                                        </oxy:PlotView>
                                         <!-- RAM Chart -->
-                                        <oxy:PlotView Grid.Row="1" Grid.Column="0" Model="{Binding MiniRamPlot}" Margin="0,8,8,0"/>
+                                        <oxy:PlotView x:Name="RamPlotView" Grid.Row="1" Grid.Column="0" Model="{Binding MiniRamPlot}" Margin="0,8,8,0">
+                                            <oxy:PlotView.DefaultTrackerTemplate>
+                                                <ControlTemplate>
+                                                    <Border Background="#CC222222" CornerRadius="6" Padding="8">
+                                                        <TextBlock Text="{Binding Text}" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </oxy:PlotView.DefaultTrackerTemplate>
+                                        </oxy:PlotView>
                                         <!-- Disk Chart -->
-                                        <oxy:PlotView Grid.Row="1" Grid.Column="1" Model="{Binding MiniDiskPlot}" Margin="8,8,0,0"/>
+                                        <oxy:PlotView x:Name="DiskPlotView" Grid.Row="1" Grid.Column="1" Model="{Binding MiniDiskPlot}" Margin="8,8,0,0">
+                                            <oxy:PlotView.DefaultTrackerTemplate>
+                                                <ControlTemplate>
+                                                    <Border Background="#CC222222" CornerRadius="6" Padding="8">
+                                                        <TextBlock Text="{Binding Text}" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </oxy:PlotView.DefaultTrackerTemplate>
+                                        </oxy:PlotView>
                                     </Grid>
                                 </StackPanel>
                             </Border>
@@ -231,26 +263,26 @@
                             <!-- Heatmap Section -->
                             <Border Grid.Column="1" Background="White" BorderBrush="#d4d1ca" BorderThickness="1" CornerRadius="8" Padding="16" Margin="8,0,0,0">
                                 <StackPanel>
-                                    <TextBlock Text="Run Heatmap" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                    <TextBlock Text="Metrics by run: darker red = higher load" FontSize="11" Foreground="#7a7974" Margin="0,0,0,12"/>
+                                    <TextBlock Text="Mapa de Calor de Ejecuciones" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Métricas por ejecución: rojo más oscuro = carga mayor" FontSize="11" Foreground="#7a7974" Margin="0,0,0,12"/>
                                     <Canvas x:Name="HeatmapCanvas" Height="300" Background="#FAFAFA" Margin="0,0,0,12"/>
                                     <StackPanel Orientation="Vertical" Margin="0,0,0,0">
-                                        <TextBlock Text="Legend" FontSize="10" FontWeight="SemiBold" Foreground="#7a7974" Margin="0,0,0,6"/>
+                                        <TextBlock Text="Leyenda" FontSize="10" FontWeight="SemiBold" Foreground="#7a7974" Margin="0,0,0,6"/>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
                                             <Rectangle Width="14" Height="14" Fill="#FFE8E8" Stroke="#ddd" StrokeThickness="0.5" Margin="0,0,6,0"/>
-                                            <TextBlock Text="Low" FontSize="10" Foreground="#7a7974"/>
+                                            <TextBlock Text="Bajo" FontSize="10" Foreground="#7a7974"/>
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
                                             <Rectangle Width="14" Height="14" Fill="#FFCCCC" Stroke="#ddd" StrokeThickness="0.5" Margin="0,0,6,0"/>
-                                            <TextBlock Text="Medium" FontSize="10" Foreground="#7a7974"/>
+                                            <TextBlock Text="Medio" FontSize="10" Foreground="#7a7974"/>
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
                                             <Rectangle Width="14" Height="14" Fill="#FF9999" Stroke="#ddd" StrokeThickness="0.5" Margin="0,0,6,0"/>
-                                            <TextBlock Text="High" FontSize="10" Foreground="#7a7974"/>
+                                            <TextBlock Text="Alto" FontSize="10" Foreground="#7a7974"/>
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal">
                                             <Rectangle Width="14" Height="14" Fill="#CC0000" Stroke="#999" StrokeThickness="0.5" Margin="0,0,6,0"/>
-                                            <TextBlock Text="Very High" FontSize="10" Foreground="#7a7974"/>
+                                            <TextBlock Text="Muy Alto" FontSize="10" Foreground="#7a7974"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
@@ -260,7 +292,7 @@
                         <!-- Data Table -->
                         <Border Background="White" BorderBrush="#d4d1ca" BorderThickness="1" CornerRadius="8" Padding="16">
                             <StackPanel>
-                                <TextBlock Text="Detailed Runs" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                                <TextBlock Text="Ejecuciones Detalladas" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,12"/>
                                 <DataGrid ItemsSource="{Binding HistoryItems}"
                                           AutoGenerateColumns="False"
                                           IsReadOnly="True"
@@ -268,18 +300,58 @@
                                           RowHeaderWidth="0"
                                           GridLinesVisibility="Horizontal"
                                           BorderThickness="0"
-                                          MaxHeight="400">
+                                          MaxHeight="400"
+                                          CanUserSortColumns="True">
+                                    <DataGrid.Resources>
+                                        <Style TargetType="{x:Type DataGridColumnHeader}">
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                            <Setter Property="Foreground" Value="#111"/>
+                                            <Setter Property="Padding" Value="10,6"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="{x:Type DataGridColumnHeader}">
+                                                        <Border Background="#F7F7F7" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+                                                            <Grid>
+                                                                <ContentPresenter Margin="0,0,16,0"
+                                                                                  VerticalAlignment="Center"
+                                                                                  HorizontalAlignment="Left"/>
+                                                                <TextBlock x:Name="SortArrow"
+                                                                           Text="▲"
+                                                                           FontSize="9"
+                                                                           Foreground="Black"
+                                                                           HorizontalAlignment="Right"
+                                                                           VerticalAlignment="Center"
+                                                                           Margin="0,0,6,0"
+                                                                           Visibility="Collapsed"/>
+                                                            </Grid>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="SortDirection" Value="Ascending">
+                                                                <Setter TargetName="SortArrow" Property="Visibility" Value="Visible"/>
+                                                                <Setter TargetName="SortArrow" Property="Text" Value="▲"/>
+                                                            </Trigger>
+                                                            <Trigger Property="SortDirection" Value="Descending">
+                                                                <Setter TargetName="SortArrow" Property="Visibility" Value="Visible"/>
+                                                                <Setter TargetName="SortArrow" Property="Text" Value="▼"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </DataGrid.Resources>
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Fecha" Binding="{Binding Timestamp, StringFormat=yyyy-MM-dd HH:mm:ss}" Width="2*" MinWidth="170"/>
-                                        <DataGridTextColumn Header="Score" Binding="{Binding Score, StringFormat=\{0:F1\}}" Width="*" MinWidth="200"/>
-                                        <DataGridTextColumn Header="CPU %" Binding="{Binding CpuLoad, StringFormat=\{0:F1\}}" Width="*" MinWidth="200"/>
-                                        <DataGridTextColumn Header="GPU %" Binding="{Binding GpuLoad, StringFormat=\{0:F1\}}" Width="*" MinWidth="200"/>
-                                        <DataGridTextColumn Header="RAM %" Binding="{Binding RamLoad, StringFormat=\{0:F1\}}" Width="*" MinWidth="200"/>
-                                        <DataGridTextColumn Header="Disco %" Binding="{Binding DiskLoad, StringFormat=\{0:F1\}}" Width="*" MinWidth="200"/>
-                                        <DataGridTemplateColumn Header="Detalle" Width="200">
+                                        <DataGridTextColumn Header="Ejecución" Binding="{Binding RunLabel}" Width="70" MinWidth="55" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="Fecha" Binding="{Binding Timestamp, StringFormat=yyyy-MM-dd HH:mm:ss}" SortMemberPath="Timestamp" Width="2*" MinWidth="170"/>
+                                        <DataGridTextColumn Header="Puntuación" Binding="{Binding Score, StringFormat=\{0:F1\}}" Width="*" MinWidth="180"/>
+                                        <DataGridTextColumn Header="CPU %" Binding="{Binding CpuLoad, StringFormat=\{0:F1\}}" Width="*" MinWidth="180"/>
+                                        <DataGridTextColumn Header="GPU %" Binding="{Binding GpuLoad, StringFormat=\{0:F1\}}" Width="*" MinWidth="180"/>
+                                        <DataGridTextColumn Header="RAM %" Binding="{Binding RamLoad, StringFormat=\{0:F1\}}" Width="*" MinWidth="180"/>
+                                        <DataGridTextColumn Header="Disco %" Binding="{Binding DiskLoad, StringFormat=\{0:F1\}}" Width="*" MinWidth="180"/>
+                                        <DataGridTemplateColumn Header="Detalle" Width="*" MinWidth="150">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
-                                                    <Button Content="Ver" Padding="8,2" Command="{Binding DataContext.ShowHistoryDetailsCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}"/>
+                                                    <Button Content="Ver" Padding="8,2" Width="100" Command="{Binding DataContext.ShowHistoryDetailsCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}"/>
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>

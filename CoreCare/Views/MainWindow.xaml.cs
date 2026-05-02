@@ -29,6 +29,11 @@ namespace CoreCare
             var vm = new MainViewModel();
             this.DataContext = vm;
 
+            ConfigureHoverTracking(CpuPlotView);
+            ConfigureHoverTracking(GpuPlotView);
+            ConfigureHoverTracking(RamPlotView);
+            ConfigureHoverTracking(DiskPlotView);
+
             Loaded += (_, _) => Dispatcher.BeginInvoke(new Action(DrawHeatmap), System.Windows.Threading.DispatcherPriority.Loaded);
 
             // Subscribe to VM property changes to redraw heatmap
@@ -51,6 +56,13 @@ namespace CoreCare
             HoverPopup.IsOpen = false;
         }
 
+        private static void ConfigureHoverTracking(PlotView plotView)
+        {
+            var controller = new PlotController();
+            controller.BindMouseEnter(OxyPlot.PlotCommands.HoverSnapTrack);
+            plotView.Controller = controller;
+        }
+
         public void DrawHeatmap()
         {
             if (this.DataContext is not MainViewModel vm) return;
@@ -64,12 +76,14 @@ namespace CoreCare
             const double rowLabelHeight = 22;
 
             var metrics = vm.HeatmapData;
+            var runLabels = vm.LastHistorySubset.Select(item => item.RunLabel ?? string.Empty).ToList();
             int numRuns = metrics.FirstOrDefault().Values.Count;
 
             // Draw column headers (run labels)
             for (int col = 0; col < numRuns; col++)
             {
-                var text = new TextBlock { Text = $"R{col + 1}", FontSize = 9, Foreground = Brushes.Gray, TextAlignment = TextAlignment.Center, Width = cellWidth - 2 };
+                var runLabel = col < runLabels.Count ? runLabels[col] : $"R{col + 1}";
+                var text = new TextBlock { Text = runLabel, FontSize = 9, Foreground = Brushes.Gray, TextAlignment = TextAlignment.Center, Width = cellWidth - 2 };
                 Canvas.SetLeft(text, labelWidth + col * cellWidth + 2);
                 Canvas.SetTop(text, 2);
                 HeatmapCanvas.Children.Add(text);

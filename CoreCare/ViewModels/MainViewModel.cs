@@ -258,7 +258,28 @@ namespace CoreCare.ViewModels
                     return;
                 }
 
-                var history = historyService.GetHistory(userId, from, to, 200);
+                var history = historyService.GetHistory(userId, from, to, 200)
+                    .OrderByDescending(h => h.Timestamp)
+                    .ToList();
+
+                var orderedForLabels = history
+                    .OrderBy(h => h.Timestamp)
+                    .ToList();
+
+                for (int i = 0; i < orderedForLabels.Count; i++)
+                {
+                    orderedForLabels[i].RunLabel = $"R{i + 1}";
+                }
+
+                var runLabelById = orderedForLabels.ToDictionary(item => item.Id, item => item.RunLabel);
+
+                for (int i = 0; i < history.Count; i++)
+                {
+                    if (runLabelById.TryGetValue(history[i].Id, out var runLabel))
+                    {
+                        history[i].RunLabel = runLabel;
+                    }
+                }
 
                 HistoryItems.Clear();
                 foreach (var item in history)
@@ -275,9 +296,11 @@ namespace CoreCare.ViewModels
                 var trend = historyService.BuildTrend(history);
                 TrendStatus = BuildTrendStatus(trend);
 
-                // limit to last 10 runs for charts
-                var orderedAll = history.OrderBy(h => h.Timestamp).ToList();
-                var subset = orderedAll.Skip(Math.Max(0, orderedAll.Count - 10)).ToList();
+                // limit to last 10 runs for charts, then restore chronological order
+                var subset = history
+                    .Take(10)
+                    .OrderBy(h => h.Timestamp)
+                    .ToList();
                 LastHistorySubset = subset;
 
                 // build chart models from subset
@@ -597,16 +620,30 @@ namespace CoreCare.ViewModels
 
             var ordered = history.OrderBy(h => h.Timestamp).ToList();
 
-            MiniCpuPlot = BuildMiniPlot("CPU %", ordered.Select(h => (double)h.CpuLoad).ToList(), OxyColors.DarkCyan, OxyColor.FromArgb(30, 0, 105, 111));
-            MiniGpuPlot = BuildMiniPlot("GPU %", ordered.Select(h => (double)h.GpuLoad).ToList(), OxyColors.Orange, OxyColor.FromArgb(40, 218, 113, 1));
-            MiniRamPlot = BuildMiniPlot("RAM %", ordered.Select(h => (double)h.RamLoad).ToList(), OxyColors.Red, OxyColor.FromArgb(30, 161, 53, 68));
-            MiniDiskPlot = BuildMiniPlot("Disk %", ordered.Select(h => (double)h.DiskLoad).ToList(), OxyColors.Gold, OxyColor.FromArgb(40, 218, 113, 1));
+            var runLabels = ordered.Select(h => h.RunLabel ?? string.Empty).ToList();
+
+            MiniCpuPlot = BuildMiniPlot("CPU %", ordered.Select(h => (double)h.CpuLoad).ToList(), runLabels, OxyColors.DarkCyan, OxyColor.FromArgb(30, 0, 105, 111));
+            MiniGpuPlot = BuildMiniPlot("GPU %", ordered.Select(h => (double)h.GpuLoad).ToList(), runLabels, OxyColors.Orange, OxyColor.FromArgb(40, 218, 113, 1));
+            MiniRamPlot = BuildMiniPlot("RAM %", ordered.Select(h => (double)h.RamLoad).ToList(), runLabels, OxyColors.Red, OxyColor.FromArgb(30, 161, 53, 68));
+            MiniDiskPlot = BuildMiniPlot("Disk %", ordered.Select(h => (double)h.DiskLoad).ToList(), runLabels, OxyColors.Gold, OxyColor.FromArgb(40, 218, 113, 1));
         }
 
-        private PlotModel BuildMiniPlot(string title, List<double> values, OxyColor lineColor, OxyColor fillColor)
+        private PlotModel BuildMiniPlot(string title, List<double> values, List<string> runLabels, OxyColor lineColor, OxyColor fillColor)
         {
             var model = new PlotModel { Title = title, TitleFontSize = 12 };
-            model.Axes.Add(new LinearAxis { Position = AxisPosition.Bottom, IsAxisVisible = false, IsPanEnabled = false, IsZoomEnabled = false });
+            var categoryAxis = new CategoryAxis
+            {
+                Position = AxisPosition.Bottom,
+                IsAxisVisible = true,
+                IsPanEnabled = false,
+                IsZoomEnabled = false,
+                GapWidth = 0.2,
+                IsTickCentered = true,
+                TextColor = OxyColors.Gray,
+                TickStyle = TickStyle.None,
+            };
+            categoryAxis.Labels.AddRange(runLabels);
+            model.Axes.Add(categoryAxis);
             model.Axes.Add(new LinearAxis { Position = AxisPosition.Left, IsAxisVisible = false, IsPanEnabled = false, IsZoomEnabled = false });
 
             var series = new LineSeries
@@ -614,7 +651,9 @@ namespace CoreCare.ViewModels
                 Color = lineColor,
                 StrokeThickness = 2,
                 DataFieldX = null,
-                DataFieldY = null
+                DataFieldY = null,
+                TrackerFormatString = "{0}\nValor: {4:F1}%",
+                CanTrackerInterpolatePoints = true
             };
 
             for (int i = 0; i < values.Count; i++)
@@ -632,7 +671,11 @@ namespace CoreCare.ViewModels
 
             if (history.Count == 0) return;
 
-            var ordered = history.OrderBy(h => h.Timestamp).ToList();
+            var ordered = history
+                .OrderByDescending(h => h.Timestamp)
+                .Take(10)
+                .OrderBy(h => h.Timestamp)
+                .ToList();
 
             var cpuValues = ordered.Select(h => (double)h.CpuLoad).ToList();
             var gpuValues = ordered.Select(h => (double)h.GpuLoad).ToList();
