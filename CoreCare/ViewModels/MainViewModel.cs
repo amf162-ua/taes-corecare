@@ -25,6 +25,7 @@ namespace CoreCare.ViewModels
         private readonly ProcessService _processService;
         private readonly GeminiAIService _geminiService;
         private readonly SystemSpecsService _systemSpecsService;
+        private readonly HardwareUpgradeAdvisorService _upgradeAdvisorService;
         private readonly DispatcherTimer _refreshTimer;
 
         [ObservableProperty]
@@ -125,6 +126,7 @@ namespace CoreCare.ViewModels
             _processService = new ProcessService();
             _geminiService = new GeminiAIService();
             _systemSpecsService = new SystemSpecsService();
+            _upgradeAdvisorService = new HardwareUpgradeAdvisorService();
 
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
             _refreshTimer.Tick += (s, e) => UpdateAllData();
@@ -295,6 +297,7 @@ namespace CoreCare.ViewModels
                 var systemSpecs = specsTask.Result;
                 var telemetryWarnings = new System.Collections.Generic.List<string>();
                 var telemetryData = BuildReportTelemetry(systemSpecs, telemetryWarnings);
+                var (upgradeScores, upgradeRecommendations) = _upgradeAdvisorService.Analyze(systemSpecs, telemetryData);
 
                 loadingWindow.UpdateProgress(45, "Preparando recomendaciones...");
 
@@ -311,6 +314,8 @@ namespace CoreCare.ViewModels
                     Recommendations = recommendations,
                     TelemetryWarnings = telemetryWarnings,
                     RecommendationsGeneratedLocally = generatedLocally,
+                    UpgradeScores = upgradeScores,
+                    UpgradeRecommendations = upgradeRecommendations,
                     TelemetryData = telemetryData
                 };
 

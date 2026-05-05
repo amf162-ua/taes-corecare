@@ -100,6 +100,7 @@ namespace CoreCare.Services
                 column.Item().Element(c => ComposeSection(c, "Especificaciones del sistema", ComposeSpecs));
                 column.Item().Element(c => ComposeSection(c, "Telemetría actual", ComposeTelemetryTable));
                 column.Item().Element(c => ComposeSection(c, "Recomendaciones", ComposeRecommendations));
+                column.Item().Element(c => ComposeSection(c, "Mejoras de hardware sugeridas", ComposeUpgradeAdvice));
 
                 if (_data.TelemetryWarnings.Count > 0)
                 {
@@ -299,6 +300,159 @@ namespace CoreCare.Services
             });
         }
 
+        private void ComposeUpgradeAdvice(IContainer container)
+        {
+            var profiles = new[] { UpgradeProfile.General, UpgradeProfile.Gaming, UpgradeProfile.HeavyWork };
+
+            container.Column(column =>
+            {
+                column.Spacing(12);
+
+                foreach (var profile in profiles)
+                {
+                    column.Item().Element(c => ComposeUpgradeProfileBlock(c, profile));
+                }
+            });
+        }
+
+        private void ComposeUpgradeProfileBlock(IContainer container, UpgradeProfile profile)
+        {
+            container.Border(1).BorderColor(Border).Background("#FFFFFF").Padding(11).Column(column =>
+            {
+                column.Spacing(9);
+
+                column.Item().Column(header =>
+                {
+                    header.Spacing(3);
+                    header.Item().Text(ProfileLabel(profile)).FontSize(12).SemiBold().FontColor(Primary);
+                    header.Item().Text(ProfileDescription(profile)).FontSize(8).FontColor(Muted);
+                });
+
+                column.Item().Element(c => ComposeProfileScoreTable(c, profile));
+                column.Item().Element(c => ComposeProfileRecommendations(c, profile));
+            });
+        }
+
+        private void ComposeProfileScoreTable(IContainer container, UpgradeProfile profile)
+        {
+            var components = new[] { "CPU", "RAM", "GPU", "Disco" };
+
+            container.Table(table =>
+            {
+                table.ColumnsDefinition(columns =>
+                {
+                    columns.RelativeColumn(0.9f);
+                    columns.RelativeColumn(0.9f);
+                    columns.RelativeColumn(3.2f);
+                });
+
+                table.Header(header =>
+                {
+                    header.Cell().Background(Primary).Padding(6).Text("Componente").FontColor("#FFFFFF").SemiBold();
+                    header.Cell().Background(Primary).Padding(6).Text("Puntuación").FontColor("#FFFFFF").SemiBold();
+                    header.Cell().Background(Primary).Padding(6).Text("Lectura").FontColor("#FFFFFF").SemiBold();
+                });
+
+                foreach (var component in components)
+                {
+                    var score = _data.UpgradeScores.FirstOrDefault(item => item.Component == component && item.Profile == profile);
+                    AddLabelCell(table, component);
+                    AddScoreCell(table, score?.Score);
+                    AddValueCell(table, score?.Reason ?? "Sin datos suficientes para puntuar este componente.");
+                }
+            });
+        }
+
+        private void ComposeProfileRecommendations(IContainer container, UpgradeProfile profile)
+        {
+            var recommendations = _data.UpgradeRecommendations
+                .Where(recommendation => recommendation.Profile == profile)
+                .OrderBy(recommendation => recommendation.CurrentScore)
+                .ThenBy(recommendation => recommendation.Component)
+                .ToList();
+
+            container.Column(column =>
+            {
+                column.Spacing(7);
+                column.Item().Text("Reemplazos sugeridos").FontSize(9).SemiBold().FontColor(Ink);
+
+                if (recommendations.Count == 0)
+                {
+                    column.Item().Background(Panel).Border(1).BorderColor(Border).Padding(8)
+                        .Text("No hay reemplazos prioritarios para esta categoría: los componentes alcanzan una puntuación aceptable.")
+                        .FontSize(8)
+                        .FontColor(Muted);
+                    return;
+                }
+
+                foreach (var recommendation in recommendations)
+                {
+                    column.Item().Element(c => ComposeUpgradeCard(c, recommendation));
+                }
+            });
+        }
+
+        private static void ComposeUpgradeCard(IContainer container, UpgradeRecommendation recommendation)
+        {
+            var color = recommendation.Priority.Equals("Alta", StringComparison.OrdinalIgnoreCase) ? "#B42318" : "#B54708";
+
+            container.Border(1).BorderColor(Border).Background("#FFFFFF").Row(row =>
+            {
+                row.ConstantItem(5).Background(color);
+                row.RelativeItem().Padding(10).Column(column =>
+                {
+                    column.Spacing(5);
+                    column.Item().Text($"{recommendation.Priority.ToUpperInvariant()} · {ProfileLabel(recommendation.Profile)}").FontSize(8).SemiBold().FontColor(color);
+                    column.Item().Text($"{recommendation.Component}: {recommendation.SuggestedUpgrade}").FontSize(11).SemiBold().FontColor(Ink);
+                    column.Item().Text(text =>
+                    {
+                        text.Span("Actual: ").SemiBold();
+                        text.Span(recommendation.CurrentComponent);
+                        text.Span($"   Puntuación: {recommendation.CurrentScore:F1}/10");
+                    });
+                    column.Item().Text(recommendation.Reason).FontSize(8).FontColor(Ink);
+                    column.Item().Text(text =>
+                    {
+                        text.Span("Rango orientativo: ").SemiBold();
+                        text.Span(recommendation.PriceRange);
+                    });
+
+                    if (!string.IsNullOrWhiteSpace(recommendation.CompatibilityNote))
+                    {
+                        column.Item().Text(recommendation.CompatibilityNote).FontSize(8).Italic().FontColor(Muted);
+                    }
+
+                    if (recommendation.PurchaseLinks.Count > 0)
+                    {
+                        column.Item().PaddingTop(3).Text(text =>
+                        {
+                            text.Span("Buscar: ").SemiBold();
+                            for (int i = 0; i < recommendation.PurchaseLinks.Count; i++)
+                            {
+                                var link = recommendation.PurchaseLinks[i];
+                                if (i > 0)
+                                {
+                                    text.Span("   ");
+                                }
+
+                                text.Span($"{link.Store}: {link.Url}").FontColor(Primary).FontSize(7);
+                            }
+                        });
+                    }
+                });
+            });
+        }
+
+        private static void AddScoreCell(TableDescriptor table, double? score)
+        {
+            var value = score ?? 0;
+            var color = value < 4.5 ? "#B42318" : value < 6.5 ? "#B54708" : Primary;
+            table.Cell().BorderBottom(1).BorderColor(Border).Padding(6)
+                .Text(score.HasValue ? $"{value:F1}/10" : "N/A")
+                .FontColor(color)
+                .SemiBold();
+        }
+
         private static void AddLabelCell(TableDescriptor table, string label)
         {
             table.Cell().BorderBottom(1).BorderColor(Border).Background(Panel).Padding(6).Text(label).SemiBold().FontColor(Muted);
@@ -392,6 +546,24 @@ namespace CoreCare.Services
 
         private static string AppendText(string current, string next)
             => string.IsNullOrWhiteSpace(current) ? next : current + " " + next;
+
+        private static string ProfileLabel(UpgradeProfile profile)
+            => profile switch
+            {
+                UpgradeProfile.General => "Uso ligero",
+                UpgradeProfile.Gaming => "Uso medio",
+                UpgradeProfile.HeavyWork => "Uso pesado",
+                _ => "Uso ligero"
+            };
+
+        private static string ProfileDescription(UpgradeProfile profile)
+            => profile switch
+            {
+                UpgradeProfile.General => "Navegar por internet, correo, ofimática, videollamadas, escuchar música, streaming y tareas diarias con pocas aplicaciones abiertas.",
+                UpgradeProfile.Gaming => "Multitarea de estudio o trabajo, muchas pestañas, edición ligera, aplicaciones algo exigentes y videojuegos casuales o eSports a 1080p.",
+                UpgradeProfile.HeavyWork => "Videojuegos exigentes, edición de foto y vídeo, 3D, máquinas virtuales, compilación, análisis de datos y cargas sostenidas de alto rendimiento.",
+                _ => "Uso cotidiano del ordenador."
+            };
 
         private void ComposeFooter(IContainer container)
         {

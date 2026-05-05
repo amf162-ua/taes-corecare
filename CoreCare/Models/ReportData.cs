@@ -22,5 +22,9 @@ namespace CoreCare.Models
         public List<string> TelemetryWarnings { get; set; } = new List<string>();
 
         public bool RecommendationsGeneratedLocally { get; set; }
+
+        public List<ComponentScore> UpgradeScores { get; set; } = new();
+
+        public List<UpgradeRecommendation> UpgradeRecommendations { get; set; } = new();
     }
 }

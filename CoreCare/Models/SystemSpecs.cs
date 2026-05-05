@@ -19,6 +19,9 @@ namespace CoreCare.Models
         [JsonPropertyName("cpu_max_clock_speed")]
         public string CpuMaxClockSpeed { get; set; } = "N/A";
 
+        [JsonPropertyName("cpu_max_clock_mhz")]
+        public int CpuMaxClockMhz { get; set; }
+
         [JsonPropertyName("cpu_cache_l2")]
         public string CpuCacheL2 { get; set; } = "N/A";
 
@@ -34,6 +37,9 @@ namespace CoreCare.Models
         [JsonPropertyName("gpu_vram")]
         public string GpuVram { get; set; } = "N/A";
 
+        [JsonPropertyName("gpu_vram_gb")]
+        public double GpuVramGb { get; set; }
+
         [JsonPropertyName("gpu_processor")]
         public string GpuProcessor { get; set; } = "N/A";
 
@@ -45,5 +51,14 @@ namespace CoreCare.Models
 
         [JsonPropertyName("disk_size")]
         public string DiskSize { get; set; } = "N/A";
+
+        [JsonPropertyName("disk_size_gb")]
+        public double DiskSizeGb { get; set; }
+
+        [JsonPropertyName("disk_media_type")]
+        public string DiskMediaType { get; set; } = "N/A";
+
+        [JsonPropertyName("disk_interface_type")]
+        public string DiskInterfaceType { get; set; } = "N/A";
     }
 }
