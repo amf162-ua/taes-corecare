@@ -309,6 +309,7 @@ namespace CoreCare.Services
                         header.Spacing(2);
                         header.Item().Text(ProfileLabel(profile)).FontSize(11.5f).SemiBold().FontColor(Ink);
                         header.Item().Text(ProfileDescription(profile)).FontSize(8).FontColor(Muted);
+                        header.Item().Text("La puntuación compara el equipo actual con una referencia razonable para este tipo de uso. Por debajo de 6,5 se considera recomendable valorar una mejora.").FontSize(7.5f).FontColor(Muted);
                     });
                 });
 
@@ -358,12 +359,12 @@ namespace CoreCare.Services
             container.Column(column =>
             {
                 column.Spacing(7);
-                column.Item().Text("Reemplazos sugeridos").FontSize(9).SemiBold().FontColor(Ink);
+                column.Item().Text("Reemplazos sugeridos para este caso").FontSize(9).SemiBold().FontColor(Ink);
 
                 if (recommendations.Count == 0)
                 {
                     column.Item().Background(Surface).Padding(8)
-                        .Text("No hay reemplazos prioritarios para esta categoría: los componentes alcanzan una puntuación aceptable.")
+                        .Text("No hay reemplazos prioritarios para esta categoría. El equipo tiene margen suficiente para este tipo de uso, aunque puede seguir beneficiándose de mantenimiento, limpieza y actualizaciones de software.")
                         .FontSize(8)
                         .FontColor(Muted);
                     return;
@@ -392,24 +393,34 @@ namespace CoreCare.Services
                 column.Item().Text(text =>
                 {
                     text.DefaultTextStyle(TextStyle.Default.FontSize(8).FontColor(Muted));
-                    text.Span("Actual: ").SemiBold();
+                    text.Span("Componente actual: ").SemiBold();
                     text.Span(recommendation.CurrentComponent);
                     text.Span("   ");
                     text.Span("Puntuación: ").SemiBold();
-                    text.Span($"{recommendation.CurrentScore:F1}/10");
+                    text.Span($"{recommendation.CurrentScore:F1}/10 ({ScoreLabel(recommendation.CurrentScore)})");
                 });
 
-                column.Item().Text(recommendation.Reason).FontSize(8).FontColor(Ink);
+                column.Item().Text(text =>
+                {
+                    text.Span("Por qué se recomienda: ").SemiBold().FontColor(Muted);
+                    text.Span(recommendation.Reason).FontColor(Ink);
+                });
+
                 column.Item().Text(text =>
                 {
                     text.DefaultTextStyle(TextStyle.Default.FontSize(8).FontColor(Muted));
-                    text.Span("Rango orientativo: ").SemiBold();
+                    text.Span("Coste orientativo: ").SemiBold();
                     text.Span(recommendation.PriceRange);
                 });
 
                 if (!string.IsNullOrWhiteSpace(recommendation.CompatibilityNote))
                 {
-                    column.Item().Text(recommendation.CompatibilityNote).FontSize(8).Italic().FontColor(Muted);
+                    column.Item().Text(text =>
+                    {
+                        text.DefaultTextStyle(TextStyle.Default.FontSize(8).FontColor(Muted));
+                        text.Span("Antes de comprar: ").SemiBold();
+                        text.Span(recommendation.CompatibilityNote);
+                    });
                 }
 
                 if (recommendation.PurchaseLinks.Count > 0)
@@ -438,7 +449,7 @@ namespace CoreCare.Services
             var value = score ?? 0;
             var color = ScoreColor(value);
             table.Cell().BorderBottom(1).BorderColor(Border).Padding(6)
-                .Text(score.HasValue ? $"{value:F1}/10" : "N/A")
+                .Text(score.HasValue ? $"{value:F1}/10 · {ScoreLabel(value)}" : "N/A")
                 .FontColor(color)
                 .SemiBold();
         }
@@ -563,6 +574,15 @@ namespace CoreCare.Services
                     ? Warning
                     : Primary;
 
+        private static string ScoreLabel(double score)
+            => score < 4.5
+                ? "crítico"
+                : score < 6.5
+                    ? "mejorable"
+                    : score < 8
+                        ? "aceptable"
+                        : "correcto";
+
         private static string ProfileLabel(UpgradeProfile profile)
             => profile switch
             {
@@ -575,9 +595,9 @@ namespace CoreCare.Services
         private static string ProfileDescription(UpgradeProfile profile)
             => profile switch
             {
-                UpgradeProfile.General => "Navegar por internet, correo, ofimática, videollamadas, escuchar música, streaming y tareas diarias con pocas aplicaciones abiertas.",
-                UpgradeProfile.Gaming => "Multitarea de estudio o trabajo, muchas pestañas, edición ligera, aplicaciones algo exigentes y videojuegos casuales o eSports a 1080p.",
-                UpgradeProfile.HeavyWork => "Videojuegos exigentes, edición de foto y vídeo, 3D, máquinas virtuales, compilación, análisis de datos y cargas sostenidas de alto rendimiento.",
+                UpgradeProfile.General => "Pensado para navegación, correo, ofimática, videollamadas, música, streaming y tareas diarias. Se prioriza fluidez, bajo coste y estabilidad, no rendimiento extremo.",
+                UpgradeProfile.Gaming => "Pensado para multitarea frecuente, muchas pestañas, aplicaciones de estudio o trabajo, edición ligera y videojuegos casuales/eSports a 1080p. Se busca equilibrio entre CPU, RAM, GPU y almacenamiento.",
+                UpgradeProfile.HeavyWork => "Pensado para videojuegos exigentes, edición de foto/vídeo, 3D, máquinas virtuales, compilación, análisis de datos y cargas sostenidas. Se valora margen de rendimiento y capacidad para trabajar durante más tiempo sin cuellos de botella.",
                 _ => "Uso cotidiano del ordenador."
             };
 

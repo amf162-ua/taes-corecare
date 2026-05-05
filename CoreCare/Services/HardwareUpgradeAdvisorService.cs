@@ -50,7 +50,7 @@ namespace CoreCare.Services
                 Component = "CPU",
                 Profile = profile,
                 Score = score,
-                Reason = $"{specs.CpuCores} núcleos / {specs.CpuThreads} hilos frente a objetivo {requiredCores}c/{requiredThreads}t."
+                Reason = $"Procesador detectado con {specs.CpuCores} núcleos y {specs.CpuThreads} hilos. Para {ProfileLabel(profile)} se toma como referencia {requiredCores} núcleos y {requiredThreads} hilos: por debajo de ese nivel pueden aparecer esperas al abrir varias aplicaciones, compilar, jugar o trabajar con tareas simultáneas."
             };
         }
 
@@ -74,7 +74,7 @@ namespace CoreCare.Services
                 Component = "RAM",
                 Profile = profile,
                 Score = Math.Round(Math.Max(0, capacityScore - pressurePenalty), 1),
-                Reason = $"{totalGb:F1} GB instalados; objetivo {requiredGb} GB para {ProfileLabel(profile)}."
+                Reason = $"Memoria detectada: {totalGb:F1} GB. Para {ProfileLabel(profile)} se recomienda llegar al menos a {requiredGb} GB; si la RAM se queda corta, Windows empieza a usar el disco como memoria temporal y el equipo se nota más lento."
             };
         }
 
@@ -97,7 +97,7 @@ namespace CoreCare.Services
                 Component = "GPU",
                 Profile = profile,
                 Score = Math.Round(Math.Max(0, vramScore - integratedPenalty), 1),
-                Reason = $"{specs.GpuName}; VRAM detectada {specs.GpuVram}. Objetivo {requiredVram} GB."
+                Reason = $"Gráfica detectada: {specs.GpuName}. VRAM detectada: {specs.GpuVram}. Para {ProfileLabel(profile)} se usa como referencia {requiredVram} GB de VRAM; una GPU integrada o con poca memoria limita juegos, edición, aceleración gráfica y cargas profesionales."
             };
         }
 
@@ -121,7 +121,7 @@ namespace CoreCare.Services
                 Component = "Disco",
                 Profile = profile,
                 Score = Math.Round(Math.Max(0, (typeScore * 0.65) + (sizeScore * 0.35) - loadPenalty), 1),
-                Reason = $"{specs.DiskModel}; tipo {specs.DiskMediaType}/{specs.DiskInterfaceType}; tamaño {specs.DiskSize}."
+                Reason = $"Unidad detectada: {specs.DiskModel}. Tipo/interfaz: {specs.DiskMediaType}/{specs.DiskInterfaceType}. Capacidad: {specs.DiskSize}. Un SSD, especialmente NVMe, reduce tiempos de arranque, carga de programas, actualizaciones y respuesta general frente a discos mecánicos o unidades pequeñas."
             };
         }
 
@@ -181,19 +181,19 @@ namespace CoreCare.Services
             {
                 UpgradeProfile.General => new UpgradeTemplate(
                     "CPU moderna de bajo consumo con 4 núcleos / 8 hilos",
-                    "Mejorará fluidez en navegación, videollamadas y multitarea básica.",
+                    "Se recomienda porque este perfil no necesita una CPU de gama alta, pero sí una base moderna para navegar con varias pestañas, usar videollamadas y mantener el sistema fluido sin bloqueos.",
                     "100-220 EUR",
                     "Verificar socket, chipset, BIOS y refrigeración antes de comprar.",
                     "procesador 4 nucleos 8 hilos"),
                 UpgradeProfile.Gaming => new UpgradeTemplate(
                     "CPU 6 núcleos / 12 hilos",
-                    "Mejorará multitarea, juegos actuales y estabilidad de FPS.",
+                    "Se recomienda porque ofrece margen para multitarea, aplicaciones pesadas moderadas y juegos actuales sin depender solo de pocos núcleos. Ayuda a mantener FPS más estables y menos tirones.",
                     "150-300 EUR",
                     "Verificar socket, chipset, BIOS y refrigeración antes de comprar.",
                     "procesador 6 nucleos 12 hilos gaming"),
                 _ => new UpgradeTemplate(
                     "CPU 8 núcleos / 16 hilos o superior",
-                    "Mejorará edición, compilación, virtualización, renderizado y tareas paralelas.",
+                    "Se recomienda para cargas sostenidas y paralelas: edición, compilación, renderizado, virtualización y trabajo profesional. Más núcleos e hilos reducen esperas cuando varias tareas compiten por CPU.",
                     "250-550 EUR",
                     "Verificar socket, chipset, BIOS, fuente y refrigeración antes de comprar.",
                     "procesador 8 nucleos 16 hilos")
@@ -205,7 +205,7 @@ namespace CoreCare.Services
             var target = profile == UpgradeProfile.HeavyWork ? "32GB RAM DDR4 DDR5" : total < 16 ? "16GB RAM DDR4 DDR5" : "32GB RAM DDR4 DDR5";
             return new UpgradeTemplate(
                 profile == UpgradeProfile.HeavyWork || total >= 16 ? "Ampliar a 32 GB de RAM" : "Ampliar a 16 GB de RAM",
-                "Reducirá paginación a disco y mejorará fluidez en multitarea, juegos y cargas pesadas.",
+                "Se recomienda porque la RAM insuficiente provoca paginación: el sistema usa el disco como apoyo y todo responde peor. La ampliación aporta margen para pestañas, aplicaciones abiertas, juegos, edición y procesos en segundo plano.",
                 profile == UpgradeProfile.HeavyWork || total >= 16 ? "70-150 EUR" : "35-80 EUR",
                 "Comprobar DDR4/DDR5, velocidad soportada y ranuras libres.",
                 target);
@@ -216,19 +216,19 @@ namespace CoreCare.Services
             {
                 UpgradeProfile.General => new UpgradeTemplate(
                     "GPU integrada moderna o dedicada básica",
-                    "Mejorará reproducción multimedia, decodificación de vídeo y fluidez visual.",
+                    "Se recomienda solo si la GPU actual es muy limitada. Para uso ligero basta con una gráfica capaz de mover vídeo, monitores externos y aceleración básica sin consumir muchos recursos.",
                     "100-220 EUR",
                     "En portátiles normalmente no es reemplazable; verificar formato y fuente.",
                     "tarjeta grafica bajo consumo multimedia"),
                 UpgradeProfile.Gaming => new UpgradeTemplate(
                     "GPU dedicada con 8 GB de VRAM",
-                    "Aumentará rendimiento en juegos 1080p y aceleración gráfica.",
+                    "Se recomienda porque la GPU suele ser el principal límite en videojuegos y aplicaciones aceleradas. 8 GB de VRAM dan margen razonable para 1080p, texturas actuales y edición ligera.",
                     "250-450 EUR",
                     "Verificar espacio en caja, fuente de alimentación y conectores PCIe.",
                     "tarjeta grafica 8GB VRAM gaming"),
                 _ => new UpgradeTemplate(
                     "GPU moderna con 12 GB de VRAM o más",
-                    "Mejorará edición, IA local, renderizado y cargas profesionales con GPU.",
+                    "Se recomienda para edición avanzada, renderizado, IA local y proyectos con escenas o archivos grandes. Más VRAM evita cuellos de botella cuando los datos no caben en memoria gráfica.",
                     "450-900 EUR",
                     "Verificar fuente, tamaño, refrigeración y compatibilidad de software.",
                     "tarjeta grafica 12GB VRAM")
@@ -237,7 +237,7 @@ namespace CoreCare.Services
         private static UpgradeTemplate BuildDiskUpgrade(SystemSpecs specs, UpgradeProfile profile)
             => new(
                 profile == UpgradeProfile.HeavyWork ? "SSD NVMe 2 TB" : IsSsdLike(specs) ? "SSD NVMe 1 TB de mayor rendimiento" : "SSD 1 TB para sistema y aplicaciones",
-                "Mejorará arranque, carga de aplicaciones, tiempos de juego y respuesta general.",
+                "Se recomienda porque el almacenamiento afecta a arranque, apertura de programas, cargas de juegos, actualizaciones y trabajo con archivos grandes. Pasar a SSD/NVMe suele ser una de las mejoras más visibles en equipos lentos.",
                 profile == UpgradeProfile.HeavyWork ? "110-250 EUR" : "55-130 EUR",
                 "Si el equipo no admite NVMe, elegir SSD SATA 2.5 pulgadas.",
                 profile == UpgradeProfile.HeavyWork ? "SSD NVMe 2TB" : IsSsdLike(specs) ? "SSD NVMe 1TB" : "SSD SATA 1TB");
