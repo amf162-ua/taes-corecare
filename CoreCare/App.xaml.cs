@@ -18,6 +18,9 @@ namespace CoreCare
         {
             base.OnStartup(e);
 
+            // Aceptar licencia comunitaria y gratuita de QuestPDF globalmente en toda la aplicación
+            QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
             // Asegurarse de que la base de datos se crea al iniciar la aplicación
             using (var db = new CoreCareDbContext())
             {
