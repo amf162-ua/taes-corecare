@@ -284,17 +284,38 @@ namespace CoreCare.ViewModels
                 float ramUsed = (float)Math.Round(_hardwareService.GetRamUsageGb(), 1);
                 float ramAvailable = (float)Math.Round(_hardwareService.GetRamAvailableGb(), 1);
                 float ramTotal = (float)Math.Round(ramUsed + ramAvailable, 1);
+                var telemetryWarnings = new System.Collections.Generic.List<string>();
+
+                var cpuTemperature = -1f;
+                if (_hardwareService.TryGetCpuTemperature(out var cpuTemperatureData, out var cpuTemperatureReason))
+                {
+                    cpuTemperature = (float)Math.Round(cpuTemperatureData.Value, 1, MidpointRounding.ToEven);
+                }
+                else
+                {
+                    telemetryWarnings.Add($"Temperatura CPU no disponible: {cpuTemperatureReason}");
+                }
+
+                var diskUsagePercent = -1f;
+                if (_hardwareService.TryGetDiskLoad(out var diskLoad, out var diskLoadReason))
+                {
+                    diskUsagePercent = (float)Math.Round(diskLoad, 1, MidpointRounding.ToEven);
+                }
+                else
+                {
+                    telemetryWarnings.Add($"Uso de disco no disponible: {diskLoadReason}");
+                }
 
                 var telemetryData = new SystemTelemetryMock
                 {
                     CpuUsagePercent = (float)Math.Round(_hardwareService.GetCpuLoad(), 1, MidpointRounding.ToEven),
-                    CpuTemperatureC = (float)Math.Round(_hardwareService.GetCpuTemperature().Value, 1, MidpointRounding.ToEven),
+                    CpuTemperatureC = cpuTemperature,
                     GpuUsagePercent = (float)Math.Round(_hardwareService.GetGpuLoad(), 1, MidpointRounding.ToEven),
                     GpuTemperatureC = (float)Math.Round(_hardwareService.GetGpuTemperature(), 1, MidpointRounding.ToEven),
                     RamTotalGb = ramTotal,
                     RamUsedGb = ramUsed,
                     DiskType = systemSpecs.DiskModel,
-                    DiskUsagePercent = (float)Math.Round(_hardwareService.GetDiskLoad(), 1, MidpointRounding.ToEven),
+                    DiskUsagePercent = diskUsagePercent,
                 };
 
                 loadingWindow.UpdateProgress(40, "Generando recomendaciones con IA...");
@@ -312,6 +333,11 @@ namespace CoreCare.ViewModels
                 else
                 {
                     recommendations.Add(aiResponse);
+                }
+
+                if (telemetryWarnings.Count > 0)
+                {
+                    recommendations.Add("Avisos de telemetría: " + string.Join(" ", telemetryWarnings));
                 }
 
                 loadingWindow.UpdateProgress(80, "Generando informe PDF...");

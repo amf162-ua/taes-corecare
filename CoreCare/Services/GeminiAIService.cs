@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -15,7 +16,12 @@ namespace CoreCare.Services
 
         private readonly string ApiKey;
 
-        private const string ApiUrl = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash-lite:generateContent";
+        private const string BaseUrl = "https://generativelanguage.googleapis.com/v1/models";
+        private static readonly string[] ModelFallbackOrder =
+        {
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-flash"
+        };
 
         public GeminiAIService()
         {
@@ -89,6 +95,7 @@ Formato SIN asteriscos, SIN Markdown, texto plano limpio:
 [Consejos extra si aplica]
 
 Datos de sistema: {jsonData}";
+            promptMessage += "\nNota: los valores numéricos -1 indican que el sensor no está disponible y no deben interpretarse como carga o temperatura real.";
 
             // Payload for Gemini API 
             var payload = new
@@ -105,34 +112,59 @@ Datos de sistema: {jsonData}";
                 }
             };
 
-            string jsonPayload = JsonSerializer.Serialize(payload);
-            var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
             _httpClient.DefaultRequestHeaders.Clear();
             _httpClient.DefaultRequestHeaders.Add("x-goog-api-key", ApiKey);
 
-            string requestUrl = ApiUrl;
-            HttpResponseMessage response = await _httpClient.PostAsync(requestUrl, content);
+            string? lastError = null;
 
-            if (response.IsSuccessStatusCode)
+            foreach (var model in ModelFallbackOrder)
             {
-                string responseJson = await response.Content.ReadAsStringAsync();
-
                 try
                 {
-                    var parsed = JsonSerializer.Deserialize<GeminiResponse>(responseJson);
-                    return parsed?.candidates?[0]?.content?.parts?[0]?.text ?? responseJson;
+                    string requestUrl = $"{BaseUrl}/{model}:generateContent";
+                    string jsonPayload = JsonSerializer.Serialize(payload);
+                    using var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+                    using HttpResponseMessage response = await _httpClient.PostAsync(requestUrl, content);
+                    string responseJson = await response.Content.ReadAsStringAsync();
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        try
+                        {
+                            var parsed = JsonSerializer.Deserialize<GeminiResponse>(responseJson);
+                            return parsed?.candidates?[0]?.content?.parts?[0]?.text ?? responseJson;
+                        }
+                        catch
+                        {
+                            return responseJson;
+                        }
+                    }
+
+                    lastError = $"Error: {response.StatusCode} - {responseJson}";
+
+                    if (!IsTransientGeminiError(response.StatusCode))
+                    {
+                        return lastError;
+                    }
                 }
-                catch
+                catch (TaskCanceledException ex)
                 {
-                    return responseJson;
+                    lastError = $"Error: Timeout consultando Gemini ({model}) - {ex.Message}";
+                }
+                catch (HttpRequestException ex)
+                {
+                    lastError = $"Error: Fallo de red consultando Gemini ({model}) - {ex.Message}";
                 }
             }
-            else
-            {
-                return $"Error: {response.StatusCode} - {await response.Content.ReadAsStringAsync()}";
-            }
+
+            return lastError ?? "Error: No se pudo obtener respuesta de Gemini.";
         }
+
+        private static bool IsTransientGeminiError(HttpStatusCode statusCode)
+            => statusCode == HttpStatusCode.TooManyRequests ||
+               statusCode == HttpStatusCode.ServiceUnavailable ||
+               statusCode == HttpStatusCode.GatewayTimeout ||
+               statusCode == HttpStatusCode.BadGateway;
     }
 
     internal class GeminiResponse

@@ -96,12 +96,13 @@ namespace CoreCare.Services
 
                 if (_data.Recommendations != null && _data.Recommendations.Count > 0)
                 {
-                    var recText = _data.Recommendations.FirstOrDefault() ?? "No hay recomendaciones.";
-
-                    column.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Background(Colors.White).Padding(10).Text(text =>
+                    foreach (var recommendation in _data.Recommendations.Where(r => !string.IsNullOrWhiteSpace(r)))
                     {
-                        text.Span(recText).FontSize(9);
-                    });
+                        column.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Background(Colors.White).Padding(10).Text(text =>
+                        {
+                            text.Span(recommendation).FontSize(9);
+                        });
+                    }
                 }
                 else
                 {
@@ -178,7 +179,7 @@ namespace CoreCare.Services
                 table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.TelemetryData.CpuUsagePercent:F1}%");
 
                 table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("Temperatura CPU (°C)");
-                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.TelemetryData.CpuTemperatureC:F1}°C");
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(FormatMetric(_data.TelemetryData.CpuTemperatureC, "°C"));
 
                 table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("Uso GPU (%)");
                 table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.TelemetryData.GpuUsagePercent:F1}%");
@@ -193,9 +194,12 @@ namespace CoreCare.Services
                 table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.TelemetryData.DiskType}");
 
                 table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text("Uso de Disco (%)");
-                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text($"{_data.TelemetryData.DiskUsagePercent}%");
+                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(FormatMetric(_data.TelemetryData.DiskUsagePercent, "%"));
             });
         }
+
+        private static string FormatMetric(double value, string suffix)
+            => value < 0 ? "No disponible" : $"{value:F1}{suffix}";
 
         private void ComposeFooter(IContainer container)
         {

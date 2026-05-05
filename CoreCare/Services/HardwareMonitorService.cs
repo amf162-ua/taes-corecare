@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Management;
+using System.Threading;
 using LibreHardwareMonitor.Hardware;
 
 namespace CoreCare.Services
@@ -177,16 +179,16 @@ namespace CoreCare.Services
             reason = string.Empty;
 
             var cpu = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);
-            float? rawTemp = cpu?.Sensors
-                .FirstOrDefault(s => s.SensorType == SensorType.Temperature && s.Value > 0)
-                ?.Value;
+            cpu?.Update();
+
+            float? rawTemp = TrySelectCpuTemperature(cpu);
 
             if (!rawTemp.HasValue)
             {
                 rawTemp = TryGetWmiCpuTemperature();
             }
 
-            if (!rawTemp.HasValue || rawTemp.Value <= 0f)
+            if (!rawTemp.HasValue)
             {
                 reason = "CPU temperature sensor and WMI fallback did not return data.";
                 return false;
@@ -243,7 +245,120 @@ namespace CoreCare.Services
         public float GetCpuLoad()
             => TryGetCpuLoad(out var value, out _) ? value : 0f;
 
-        private float? TryGetWmiCpuTemperature() { try { using var searcher = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM MSAcpi_ThermalZoneTemperature"); foreach (var obj in searcher.Get()) return (Convert.ToSingle(obj["CurrentTemperature"]) / 10f) - 273.15f; } catch { } return null; }
+        private float? TrySelectCpuTemperature(IHardware? cpu)
+        {
+            var sensors = new List<ISensor>();
+
+            if (cpu is not null)
+            {
+                sensors.AddRange(GetTemperatureSensors(cpu));
+            }
+
+            sensors.AddRange(_computer.Hardware
+                .Where(h => h.HardwareType == HardwareType.Motherboard)
+                .SelectMany(GetTemperatureSensors)
+                .Where(s => IsLikelyCpuTemperatureSensor(s.Name)));
+
+            var validSensors = sensors
+                .Where(s => s.Value.HasValue && IsPlausibleTemperature(s.Value.Value))
+                .GroupBy(s => $"{s.Hardware.Name}|{s.Name}")
+                .Select(g => g.First())
+                .ToList();
+
+            if (!validSensors.Any())
+            {
+                return null;
+            }
+
+            string[] preferredNames =
+            {
+                "cpu package",
+                "package",
+                "tctl",
+                "tdie",
+                "core max",
+                "core average",
+                "ccd"
+            };
+
+            foreach (var preferredName in preferredNames)
+            {
+                var sensor = validSensors.FirstOrDefault(s =>
+                    s.Name.Contains(preferredName, StringComparison.OrdinalIgnoreCase));
+                if (sensor?.Value is float value)
+                {
+                    return value;
+                }
+            }
+
+            var coreSensors = validSensors
+                .Where(s => s.Name.Contains("core", StringComparison.OrdinalIgnoreCase))
+                .Select(s => s.Value!.Value)
+                .ToList();
+
+            if (coreSensors.Any())
+            {
+                return coreSensors.Average();
+            }
+
+            return validSensors.Select(s => s.Value!.Value).Average();
+        }
+
+        private static IEnumerable<ISensor> GetTemperatureSensors(IHardware hardware)
+        {
+            foreach (var sensor in hardware.Sensors.Where(s => s.SensorType == SensorType.Temperature))
+            {
+                yield return sensor;
+            }
+
+            foreach (var subHardware in hardware.SubHardware)
+            {
+                try
+                {
+                    subHardware.Update();
+                }
+                catch
+                {
+                }
+
+                foreach (var sensor in subHardware.Sensors.Where(s => s.SensorType == SensorType.Temperature))
+                {
+                    yield return sensor;
+                }
+            }
+        }
+
+        private static bool IsLikelyCpuTemperatureSensor(string sensorName)
+            => sensorName.Contains("cpu", StringComparison.OrdinalIgnoreCase) ||
+               sensorName.Contains("package", StringComparison.OrdinalIgnoreCase) ||
+               sensorName.Contains("core", StringComparison.OrdinalIgnoreCase) ||
+               sensorName.Contains("tctl", StringComparison.OrdinalIgnoreCase) ||
+               sensorName.Contains("tdie", StringComparison.OrdinalIgnoreCase) ||
+               sensorName.Contains("ccd", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsPlausibleTemperature(float value)
+            => value is >= 5f and <= 125f;
+
+        private float? TryGetWmiCpuTemperature()
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher(
+                    @"root\WMI",
+                    "SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature");
+
+                var temperatures = searcher.Get()
+                    .Cast<ManagementObject>()
+                    .Select(obj => (Convert.ToSingle(obj["CurrentTemperature"]) / 10f) - 273.15f)
+                    .Where(IsPlausibleTemperature)
+                    .ToList();
+
+                return temperatures.Any() ? temperatures.Average() : null;
+            }
+            catch { }
+
+            return null;
+        }
         private float? TryGetWmiCpuClock() { try { using var searcher = new ManagementObjectSearcher("select CurrentClockSpeed from Win32_Processor"); foreach (var item in searcher.Get()) return Convert.ToSingle(item["CurrentClockSpeed"]); } catch { } return null; }
         private float? TryGetWmiCpuLoad() { try { using var searcher = new ManagementObjectSearcher("select LoadPercentage from Win32_Processor"); foreach (var item in searcher.Get()) return Convert.ToSingle(item["LoadPercentage"]); } catch { } return null; }
 
@@ -413,22 +528,16 @@ namespace CoreCare.Services
             value = 0f;
             reason = string.Empty;
 
-            var storage = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Storage);
-            storage?.Update();
+            var sensorLoads = _computer.Hardware
+                .Where(h => h.HardwareType == HardwareType.Storage)
+                .SelectMany(GetStorageLoadSensors)
+                .Where(s => s.Value.HasValue)
+                .Select(s => ClampPercent(s.Value!.Value))
+                .ToList();
 
-            if (storage is null)
+            if (sensorLoads.Any(load => load > 0.1f))
             {
-                reason = "Storage hardware not detected.";
-                return false;
-            }
-
-            var loadSensor = storage.Sensors.FirstOrDefault(s =>
-                s.SensorType == SensorType.Load &&
-                s.Name.Contains("Used", StringComparison.OrdinalIgnoreCase));
-
-            if (loadSensor?.Value is float load)
-            {
-                value = load;
+                value = sensorLoads.Max();
                 return true;
             }
 
@@ -436,6 +545,21 @@ namespace CoreCare.Services
             if (wmiLoad.HasValue)
             {
                 value = wmiLoad.Value;
+                return true;
+            }
+
+            var readMbit = TryGetDiskReadRateMbit(out var readRate, out _) ? readRate : 0f;
+            var writeMbit = TryGetDiskWriteRateMbit(out var writeRate, out _) ? writeRate : 0f;
+            var throughputMbit = readMbit + writeMbit;
+            if (throughputMbit > 0.5f)
+            {
+                value = ClampPercent(Math.Max(1f, throughputMbit / 10f));
+                return true;
+            }
+
+            if (sensorLoads.Any())
+            {
+                value = 0f;
                 return true;
             }
 
@@ -532,18 +656,104 @@ namespace CoreCare.Services
         {
             try
             {
-                using var searcher = new ManagementObjectSearcher(
-                    "SELECT PercentDiskTime FROM Win32_PerfFormattedData_PerfDisk_LogicalDisk WHERE Name = '_Total'");
-
-                foreach (var item in searcher.Get())
+                var physicalDiskValue = TryGetWmiDiskPercentTime(
+                    "SELECT Name, PercentDiskTime FROM Win32_PerfFormattedData_PerfDisk_PhysicalDisk");
+                if (physicalDiskValue.HasValue)
                 {
-                    return Convert.ToSingle(item["PercentDiskTime"]);
+                    return physicalDiskValue.Value;
                 }
+
+                Thread.Sleep(200);
+
+                physicalDiskValue = TryGetWmiDiskPercentTime(
+                    "SELECT Name, PercentDiskTime FROM Win32_PerfFormattedData_PerfDisk_PhysicalDisk");
+                if (physicalDiskValue.HasValue)
+                {
+                    return physicalDiskValue.Value;
+                }
+
+                return TryGetWmiDiskPercentTime(
+                    "SELECT Name, PercentDiskTime FROM Win32_PerfFormattedData_PerfDisk_LogicalDisk");
             }
             catch { }
 
             return null;
         }
+
+        private static float? TryGetWmiDiskPercentTime(string query)
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher(query);
+                var values = new List<float>();
+                float? totalValue = null;
+
+                foreach (var item in searcher.Get())
+                {
+                    var name = item["Name"]?.ToString() ?? string.Empty;
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        continue;
+                    }
+
+                    var rawValue = Convert.ToSingle(item["PercentDiskTime"]);
+                    if (float.IsNaN(rawValue) || float.IsInfinity(rawValue) || rawValue < 0f)
+                    {
+                        continue;
+                    }
+
+                    var clampedValue = ClampPercent(rawValue);
+                    if (name.Equals("_Total", StringComparison.OrdinalIgnoreCase))
+                    {
+                        totalValue = clampedValue;
+                    }
+                    else
+                    {
+                        values.Add(clampedValue);
+                    }
+                }
+
+                return values.Any() ? values.Max() : totalValue;
+            }
+            catch { }
+
+            return null;
+        }
+
+        private static IEnumerable<ISensor> GetStorageLoadSensors(IHardware storage)
+        {
+            try
+            {
+                storage.Update();
+            }
+            catch
+            {
+            }
+
+            foreach (var sensor in storage.Sensors.Where(s => s.SensorType == SensorType.Load))
+            {
+                yield return sensor;
+            }
+
+            foreach (var subHardware in storage.SubHardware)
+            {
+                try
+                {
+                    subHardware.Update();
+                }
+                catch
+                {
+                }
+
+                foreach (var sensor in subHardware.Sensors.Where(s => s.SensorType == SensorType.Load))
+                {
+                    yield return sensor;
+                }
+            }
+        }
+
+        private static float ClampPercent(float value)
+            => Math.Clamp(value, 0f, 100f);
 
         private float? TryGetWmiDiskReadBytesPerSec()
         {
