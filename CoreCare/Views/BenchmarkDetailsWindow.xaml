@@ -1,0 +1,141 @@
+<Window x:Class="CoreCare.BenchmarkDetailsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:models="clr-namespace:CoreCare.Models"
+        mc:Ignorable="d"
+        Title="Detalle de benchmark"
+        Height="560"
+        Width="620"
+        MinHeight="480"
+        MinWidth="540"
+        ResizeMode="CanResize"
+        Background="#F5F5F7">
+
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <GroupBox Header="General" Margin="0,0,0,10">
+                    <Grid Margin="10,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="180"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Id" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Id}"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Timestamp" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Timestamp, StringFormat=yyyy-MM-dd HH:mm:ss}" Margin="0,6,0,0"/>
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Score" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Score, StringFormat={}{0:F1}/10}" Margin="0,6,0,0"/>
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="UserId" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding UserId}" Margin="0,6,0,0"/>
+                    </Grid>
+                </GroupBox>
+
+                <GroupBox Header="CPU" Margin="0,0,0,10">
+                    <Grid Margin="10,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="180"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="CpuLoad" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CpuLoad, StringFormat={}{0:F1} %}"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="CpuTemp" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding CpuTemp, StringFormat={}{0:F1} C}" Margin="0,6,0,0"/>
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="CpuClock" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding CpuClock, StringFormat={}{0:F2} GHz}" Margin="0,6,0,0"/>
+                    </Grid>
+                </GroupBox>
+
+                <GroupBox Header="GPU" Margin="0,0,0,10">
+                    <Grid Margin="10,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="180"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="GpuLoad" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding GpuLoad, StringFormat={}{0:F1} %}"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="GpuTemp" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding GpuTemp, StringFormat={}{0:F1} C}" Margin="0,6,0,0"/>
+                    </Grid>
+                </GroupBox>
+
+                <GroupBox Header="RAM" Margin="0,0,0,10">
+                    <Grid Margin="10,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="180"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="RamUsed" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding RamUsed, StringFormat={}{0:F2} GB}"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="RamLoad" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding RamLoad, StringFormat={}{0:F1} %}" Margin="0,6,0,0"/>
+                    </Grid>
+                </GroupBox>
+
+                <GroupBox Header="DISK">
+                    <Grid Margin="10,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="180"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="DiskLoad" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding DiskLoad, StringFormat={}{0:F1} %}"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="DiskReadRate" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DiskReadRate, StringFormat={}{0:F2} Mb/s}" Margin="0,6,0,0"/>
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="DiskWriteRate" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DiskWriteRate, StringFormat={}{0:F2} Mb/s}" Margin="0,6,0,0"/>
+                    </Grid>
+                </GroupBox>
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button Content="Cerrar" Width="96" Height="32" IsCancel="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

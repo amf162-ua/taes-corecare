@@ -2,7 +2,6 @@
 using System.Data;
 using System.Windows;
 using CoreCare.Data;
-using CoreCare.Services;
 
 namespace CoreCare
 {
@@ -27,16 +26,6 @@ namespace CoreCare
             {
                 db.Database.EnsureCreated();
             }
-
-            // Opcional para pruebas: Si queréis ejecutar el menú CLI por consola en lugar de la UI
-            // bool runTerminalMenu = e.Args.Contains("--cli", StringComparer.OrdinalIgnoreCase);
-
-            // if (runTerminalMenu)
-            // {
-            //     TerminalBenchmarkMenuService.RunInteractiveMenu();
-            //     Shutdown();
-            //     return;
-            // }
         }
     }
 
