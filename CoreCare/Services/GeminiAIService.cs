@@ -25,7 +25,10 @@ namespace CoreCare.Services
 
         public GeminiAIService()
         {
-            _httpClient = new HttpClient();
+            _httpClient = new HttpClient
+            {
+                Timeout = TimeSpan.FromSeconds(8)
+            };
             ApiKey = LoadApiKey();
         }
 

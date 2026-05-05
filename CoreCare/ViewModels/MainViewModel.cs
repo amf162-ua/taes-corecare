@@ -255,6 +255,18 @@ namespace CoreCare.ViewModels
                 return;
             }
 
+            var saveDialog = new Microsoft.Win32.SaveFileDialog
+            {
+                FileName = $"Informe_CoreCare_{DateTime.Now:yyyyMMdd_HHmmss}",
+                DefaultExt = ".pdf",
+                Filter = "PDF files (*.pdf)|*.pdf"
+            };
+
+            if (saveDialog.ShowDialog() != true)
+            {
+                return;
+            }
+
             LoadingWindow? loadingWindow = null;
             IsBusy = true;
 
@@ -267,7 +279,7 @@ namespace CoreCare.ViewModels
                 };
                 loadingWindow.Show();
 
-                loadingWindow.UpdateProgress(0, "Recopilando datos del sistema...");
+                loadingWindow.UpdateProgress(0, "Preparando informe...");
 
                 var hardwareTask = Task.Run(() =>
                 {
@@ -278,13 +290,54 @@ namespace CoreCare.ViewModels
 
                 await Task.WhenAll(hardwareTask, specsTask);
 
-                loadingWindow.UpdateProgress(20, "Analizando hardware...");
+                loadingWindow.UpdateProgress(25, "Analizando telemetría...");
 
                 var systemSpecs = specsTask.Result;
+                var telemetryWarnings = new System.Collections.Generic.List<string>();
+                var telemetryData = BuildReportTelemetry(systemSpecs, telemetryWarnings);
+
+                loadingWindow.UpdateProgress(45, "Preparando recomendaciones...");
+
+                var (recommendations, generatedLocally) = await GetFastRecommendationsAsync(telemetryData, systemSpecs);
+
+                loadingWindow.UpdateProgress(80, "Generando PDF...");
+
+                var data = new ReportData
+                {
+                    CompanyName = "TechRepairs S.L.",
+                    ClientName = "Jesús Pérez",
+                    ReportDate = DateTime.Now,
+                    SystemSpecs = systemSpecs,
+                    Recommendations = recommendations,
+                    TelemetryWarnings = telemetryWarnings,
+                    RecommendationsGeneratedLocally = generatedLocally,
+                    TelemetryData = telemetryData
+                };
+
+                var document = new ReportDocument(data);
+                document.GeneratePdf(saveDialog.FileName);
+
+                loadingWindow.UpdateProgress(100, "Completado");
+                loadingWindow.Close();
+
+                MessageBox.Show($"Informe generado con éxito.\nGuardado en: {saveDialog.FileName}", "PDF generado", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al generar el PDF: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                loadingWindow?.Close();
+                IsBusy = false;
+            }
+        }
+
+        private SystemTelemetryMock BuildReportTelemetry(SystemSpecs systemSpecs, System.Collections.Generic.List<string> telemetryWarnings)
+        {
                 float ramUsed = (float)Math.Round(_hardwareService.GetRamUsageGb(), 1);
                 float ramAvailable = (float)Math.Round(_hardwareService.GetRamAvailableGb(), 1);
                 float ramTotal = (float)Math.Round(ramUsed + ramAvailable, 1);
-                var telemetryWarnings = new System.Collections.Generic.List<string>();
 
                 var cpuTemperature = -1f;
                 if (_hardwareService.TryGetCpuTemperature(out var cpuTemperatureData, out var cpuTemperatureReason))
@@ -306,7 +359,7 @@ namespace CoreCare.ViewModels
                     telemetryWarnings.Add($"Uso de disco no disponible: {diskLoadReason}");
                 }
 
-                var telemetryData = new SystemTelemetryMock
+                return new SystemTelemetryMock
                 {
                     CpuUsagePercent = (float)Math.Round(_hardwareService.GetCpuLoad(), 1, MidpointRounding.ToEven),
                     CpuTemperatureC = cpuTemperature,
@@ -317,67 +370,80 @@ namespace CoreCare.ViewModels
                     DiskType = systemSpecs.DiskModel,
                     DiskUsagePercent = diskUsagePercent,
                 };
+        }
 
-                loadingWindow.UpdateProgress(40, "Generando recomendaciones con IA...");
+        private async Task<(System.Collections.Generic.List<string> Recommendations, bool GeneratedLocally)> GetFastRecommendationsAsync(SystemTelemetryMock telemetryData, SystemSpecs systemSpecs)
+        {
+            var aiTask = _geminiService.GetRecommendationsAsync(telemetryData, systemSpecs);
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(8));
 
-                var aiResponse = await _geminiService.GetRecommendationsAsync(telemetryData, systemSpecs);
-
-                var recommendations = new System.Collections.Generic.List<string>();
-
-                if (aiResponse.StartsWith("Error:"))
-                {
-                    //recommendations.Add("Error al conectar con IA. Intenta más tarde.");
-                    recommendations.Add(aiResponse);
-                    MessageBox.Show("No se pudieron obtener recomendaciones de IA.\nEl servicio está temporalmente no disponible.", "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
-                }
-                else
-                {
-                    recommendations.Add(aiResponse);
-                }
-
-                if (telemetryWarnings.Count > 0)
-                {
-                    recommendations.Add("Avisos de telemetría: " + string.Join(" ", telemetryWarnings));
-                }
-
-                loadingWindow.UpdateProgress(80, "Generando informe PDF...");
-
-                var data = new ReportData
-                {
-                    CompanyName = "TechRepairs S.L.",
-                    ClientName = "Jesús Pérez",
-                    ReportDate = DateTime.Now,
-                    SystemSpecs = systemSpecs,
-                    Recommendations = recommendations,
-                    TelemetryData = telemetryData
-                };
-
-                var document = new ReportDocument(data);
-                loadingWindow.UpdateProgress(100, "¡Completado!");
-                loadingWindow.Close();
-
-                var saveDialog = new Microsoft.Win32.SaveFileDialog
-                {
-                    FileName = $"Informe_CoreCare_{DateTime.Now:yyyyMMdd_HHmmss}",
-                    DefaultExt = ".pdf",
-                    Filter = "PDF files (*.pdf)|*.pdf"
-                };
-
-                if (saveDialog.ShowDialog() == true)
-                {
-                    document.GeneratePdf(saveDialog.FileName);
-                    MessageBox.Show($"¡Informe generado con éxito!\nGuardado en: {saveDialog.FileName}", "PDF Generado", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-            }
-            catch (Exception ex)
+            if (await Task.WhenAny(aiTask, timeoutTask) == aiTask)
             {
-                MessageBox.Show($"Error al generar el PDF: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                var aiResponse = await aiTask;
+                if (!aiResponse.StartsWith("Error:", StringComparison.OrdinalIgnoreCase))
+                {
+                    return (new System.Collections.Generic.List<string> { aiResponse }, false);
+                }
             }
-            finally
+
+            return (BuildLocalRecommendations(telemetryData, systemSpecs), true);
+        }
+
+        private static System.Collections.Generic.List<string> BuildLocalRecommendations(SystemTelemetryMock telemetryData, SystemSpecs systemSpecs)
+        {
+            var recommendations = new System.Collections.Generic.List<string>();
+
+            if (telemetryData.CpuUsagePercent > 80 || telemetryData.CpuTemperatureC < 0)
             {
-                loadingWindow?.Close();
-                IsBusy = false;
+                recommendations.Add($@"=== PRIORIDAD ALTA ===
+[CPU]
+- Problema: {(telemetryData.CpuTemperatureC < 0 ? "No se pudo leer la temperatura del procesador; sin ese dato no se puede validar el margen térmico." : $"El uso de CPU está en {telemetryData.CpuUsagePercent:F1}%, por encima del rango cómodo para uso sostenido.")}
+- Solución: Ejecutar CoreCare como administrador, comprobar refrigeración y cerrar procesos intensivos antes de tareas críticas.
+- Coste: Bajo / Medio
+- Impacto: Alto");
             }
+
+            if (telemetryData.RamTotalGb > 0 && telemetryData.RamUsedGb / telemetryData.RamTotalGb > 0.8)
+            {
+                recommendations.Add($@"=== PRIORIDAD MEDIA ===
+[Memoria RAM]
+- Problema: La memoria utilizada está cerca del límite disponible ({telemetryData.RamUsedGb:F1} GB de {telemetryData.RamTotalGb:F1} GB).
+- Solución: Cerrar aplicaciones en segundo plano o ampliar RAM si esta situación se repite.
+- Coste: Medio
+- Impacto: Medio / Alto");
+            }
+
+            if (telemetryData.DiskUsagePercent < 0 || telemetryData.DiskUsagePercent > 80)
+            {
+                recommendations.Add($@"=== PRIORIDAD MEDIA ===
+[Almacenamiento]
+- Problema: {(telemetryData.DiskUsagePercent < 0 ? "No se pudo leer el contador de actividad de disco." : $"El disco presenta una carga elevada ({telemetryData.DiskUsagePercent:F1}%).")}
+- Solución: Revisar procesos de escritura, estado SMART y espacio disponible en {systemSpecs.DiskModel}.
+- Coste: Bajo
+- Impacto: Medio");
+            }
+
+            if (telemetryData.GpuUsagePercent > 80 || telemetryData.GpuTemperatureC > 85)
+            {
+                recommendations.Add($@"=== PRIORIDAD MEDIA ===
+[GPU]
+- Problema: La GPU muestra carga o temperatura elevada.
+- Solución: Revisar drivers, ventilación y aplicaciones con aceleración gráfica activa.
+- Coste: Bajo
+- Impacto: Medio");
+            }
+
+            if (recommendations.Count == 0)
+            {
+                recommendations.Add(@"=== NOTAS ADICIONALES ===
+[Estado general]
+- Problema: No se detectan señales críticas en la telemetría disponible.
+- Solución: Mantener revisiones periódicas y repetir el informe bajo carga si se sospecha degradación.
+- Coste: Bajo
+- Impacto: Medio");
+            }
+
+            return recommendations;
         }
 
         [RelayCommand]

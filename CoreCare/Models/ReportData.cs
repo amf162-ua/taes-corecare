@@ -18,5 +18,9 @@ namespace CoreCare.Models
 
         // Recomendaciones (hasta este el Parser, lo simularemos con strings)
         public List<string> Recommendations { get; set; } = new List<string>();
+
+        public List<string> TelemetryWarnings { get; set; } = new List<string>();
+
+        public bool RecommendationsGeneratedLocally { get; set; }
     }
 }
