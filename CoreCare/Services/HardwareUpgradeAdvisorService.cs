@@ -30,6 +30,7 @@ namespace CoreCare.Services
                 UpgradeProfile.General => 2,
                 UpgradeProfile.Gaming => 4,
                 UpgradeProfile.HeavyWork => 8,
+                UpgradeProfile.VeryHeavyWork => 12,
                 _ => 2
             };
             var requiredThreads = profile switch
@@ -37,6 +38,7 @@ namespace CoreCare.Services
                 UpgradeProfile.General => 4,
                 UpgradeProfile.Gaming => 8,
                 UpgradeProfile.HeavyWork => 16,
+                UpgradeProfile.VeryHeavyWork => 24,
                 _ => 4
             };
 
@@ -62,6 +64,7 @@ namespace CoreCare.Services
                 UpgradeProfile.General => 8,
                 UpgradeProfile.Gaming => 16,
                 UpgradeProfile.HeavyWork => 32,
+                UpgradeProfile.VeryHeavyWork => 64,
                 _ => 8
             };
 
@@ -86,6 +89,7 @@ namespace CoreCare.Services
                 UpgradeProfile.General => 1,
                 UpgradeProfile.Gaming => 4,
                 UpgradeProfile.HeavyWork => 12,
+                UpgradeProfile.VeryHeavyWork => 16,
                 _ => 1
             };
 
@@ -110,6 +114,7 @@ namespace CoreCare.Services
                 UpgradeProfile.General => 250,
                 UpgradeProfile.Gaming => 500,
                 UpgradeProfile.HeavyWork => 1000,
+                UpgradeProfile.VeryHeavyWork => 2000,
                 _ => 250
             };
             var typeScore = isNvme ? 10 : isSsd ? 8 : 4;
@@ -191,22 +196,29 @@ namespace CoreCare.Services
                     "150-300 EUR",
                     "Verificar socket, chipset, BIOS y refrigeración antes de comprar.",
                     "procesador 6 nucleos 12 hilos gaming"),
-                _ => new UpgradeTemplate(
+                UpgradeProfile.HeavyWork => new UpgradeTemplate(
                     "CPU 8 núcleos / 16 hilos o superior",
                     "Se recomienda para cargas sostenidas y paralelas: edición, compilación, renderizado, virtualización y trabajo profesional. Más núcleos e hilos reducen esperas cuando varias tareas compiten por CPU.",
                     "250-550 EUR",
                     "Verificar socket, chipset, BIOS, fuente y refrigeración antes de comprar.",
-                    "procesador 8 nucleos 16 hilos")
+                    "procesador 8 nucleos 16 hilos"),
+                _ => new UpgradeTemplate(
+                    "CPU 12 núcleos / 24 hilos o superior",
+                    "Se recomienda para cargas muy pesadas y simultáneas: renderizado prolongado, varias máquinas virtuales, compilaciones grandes, análisis de datos e IA local. Este perfil necesita mucho margen para evitar bloqueos cuando varias tareas intensivas coinciden.",
+                    "400-900 EUR",
+                    "Verificar socket, chipset, BIOS, VRM de placa base, fuente y refrigeración de alto rendimiento antes de comprar.",
+                    "procesador 12 nucleos 24 hilos")
             };
 
         private static UpgradeTemplate BuildRamUpgrade(SystemSpecs specs, SystemTelemetryMock telemetry, UpgradeProfile profile)
         {
             var total = Math.Max(specs.RamTotalGb, telemetry.RamTotalGb);
-            var target = profile == UpgradeProfile.HeavyWork ? "32GB RAM DDR4 DDR5" : total < 16 ? "16GB RAM DDR4 DDR5" : "32GB RAM DDR4 DDR5";
+            var target = profile == UpgradeProfile.VeryHeavyWork ? "64GB RAM DDR4 DDR5" : profile == UpgradeProfile.HeavyWork ? "32GB RAM DDR4 DDR5" : total < 16 ? "16GB RAM DDR4 DDR5" : "32GB RAM DDR4 DDR5";
+            var targetGb = profile == UpgradeProfile.VeryHeavyWork ? 64 : profile == UpgradeProfile.HeavyWork || total >= 16 ? 32 : 16;
             return new UpgradeTemplate(
-                profile == UpgradeProfile.HeavyWork || total >= 16 ? "Ampliar a 32 GB de RAM" : "Ampliar a 16 GB de RAM",
+                $"Ampliar a {targetGb} GB de RAM",
                 "Se recomienda porque la RAM insuficiente provoca paginación: el sistema usa el disco como apoyo y todo responde peor. La ampliación aporta margen para pestañas, aplicaciones abiertas, juegos, edición y procesos en segundo plano.",
-                profile == UpgradeProfile.HeavyWork || total >= 16 ? "70-150 EUR" : "35-80 EUR",
+                targetGb >= 64 ? "140-300 EUR" : targetGb >= 32 ? "70-150 EUR" : "35-80 EUR",
                 "Comprobar DDR4/DDR5, velocidad soportada y ranuras libres.",
                 target);
         }
@@ -226,21 +238,27 @@ namespace CoreCare.Services
                     "250-450 EUR",
                     "Verificar espacio en caja, fuente de alimentación y conectores PCIe.",
                     "tarjeta grafica 8GB VRAM gaming"),
-                _ => new UpgradeTemplate(
+                UpgradeProfile.HeavyWork => new UpgradeTemplate(
                     "GPU moderna con 12 GB de VRAM o más",
                     "Se recomienda para edición avanzada, renderizado, IA local y proyectos con escenas o archivos grandes. Más VRAM evita cuellos de botella cuando los datos no caben en memoria gráfica.",
                     "450-900 EUR",
                     "Verificar fuente, tamaño, refrigeración y compatibilidad de software.",
-                    "tarjeta grafica 12GB VRAM")
+                    "tarjeta grafica 12GB VRAM"),
+                _ => new UpgradeTemplate(
+                    "GPU profesional o gama alta con 16 GB de VRAM o más",
+                    "Se recomienda para IA local, renderizado complejo, edición 4K/8K, simulación, escenas 3D grandes y trabajo profesional con datasets pesados. En este perfil la VRAM evita que los proyectos se queden sin memoria gráfica.",
+                    "700-1600 EUR",
+                    "Verificar fuente, tamaño, refrigeración, conectores PCIe, compatibilidad CUDA/OpenCL y si el equipo permite realmente cambiar la GPU.",
+                    "tarjeta grafica 16GB VRAM profesional")
             };
 
         private static UpgradeTemplate BuildDiskUpgrade(SystemSpecs specs, UpgradeProfile profile)
             => new(
-                profile == UpgradeProfile.HeavyWork ? "SSD NVMe 2 TB" : IsSsdLike(specs) ? "SSD NVMe 1 TB de mayor rendimiento" : "SSD 1 TB para sistema y aplicaciones",
+                profile == UpgradeProfile.VeryHeavyWork ? "SSD NVMe 4 TB de alto rendimiento" : profile == UpgradeProfile.HeavyWork ? "SSD NVMe 2 TB" : IsSsdLike(specs) ? "SSD NVMe 1 TB de mayor rendimiento" : "SSD 1 TB para sistema y aplicaciones",
                 "Se recomienda porque el almacenamiento afecta a arranque, apertura de programas, cargas de juegos, actualizaciones y trabajo con archivos grandes. Pasar a SSD/NVMe suele ser una de las mejoras más visibles en equipos lentos.",
-                profile == UpgradeProfile.HeavyWork ? "110-250 EUR" : "55-130 EUR",
+                profile == UpgradeProfile.VeryHeavyWork ? "220-500 EUR" : profile == UpgradeProfile.HeavyWork ? "110-250 EUR" : "55-130 EUR",
                 "Si el equipo no admite NVMe, elegir SSD SATA 2.5 pulgadas.",
-                profile == UpgradeProfile.HeavyWork ? "SSD NVMe 2TB" : IsSsdLike(specs) ? "SSD NVMe 1TB" : "SSD SATA 1TB");
+                profile == UpgradeProfile.VeryHeavyWork ? "SSD NVMe 4TB alto rendimiento" : profile == UpgradeProfile.HeavyWork ? "SSD NVMe 2TB" : IsSsdLike(specs) ? "SSD NVMe 1TB" : "SSD SATA 1TB");
 
         private static List<PurchaseLink> BuildPurchaseLinks(string query)
         {
@@ -284,6 +302,7 @@ namespace CoreCare.Services
                 UpgradeProfile.General => "uso ligero",
                 UpgradeProfile.Gaming => "uso medio",
                 UpgradeProfile.HeavyWork => "uso pesado",
+                UpgradeProfile.VeryHeavyWork => "uso muy pesado",
                 _ => "uso ligero"
             };
 
@@ -293,6 +312,7 @@ namespace CoreCare.Services
                 UpgradeProfile.General => 0,
                 UpgradeProfile.Gaming => 1,
                 UpgradeProfile.HeavyWork => 2,
+                UpgradeProfile.VeryHeavyWork => 3,
                 _ => 0
             };
 

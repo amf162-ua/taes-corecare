@@ -6,7 +6,8 @@ namespace CoreCare.Models
     {
         General,
         Gaming,
-        HeavyWork
+        HeavyWork,
+        VeryHeavyWork
     }
 
     public sealed class ComponentScore

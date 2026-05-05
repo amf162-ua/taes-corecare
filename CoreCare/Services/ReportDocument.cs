@@ -105,10 +105,6 @@ namespace CoreCare.Services
                 column.Item().Element(c => ComposeSection(c, "Recomendaciones de IA", ComposeRecommendations));
                 column.Item().Element(c => ComposeSection(c, "Mejoras de hardware sugeridas", ComposeUpgradeAdvice));
 
-                if (_data.TelemetryWarnings.Count > 0)
-                {
-                    column.Item().Element(c => ComposeSection(c, "Avisos de telemetría", ComposeWarnings));
-                }
             });
         }
 
@@ -265,7 +261,7 @@ namespace CoreCare.Services
 
         private void ComposeUpgradeAdvice(IContainer container)
         {
-            var profiles = new[] { UpgradeProfile.General, UpgradeProfile.Gaming, UpgradeProfile.HeavyWork };
+            var profiles = new[] { UpgradeProfile.General, UpgradeProfile.Gaming, UpgradeProfile.HeavyWork, UpgradeProfile.VeryHeavyWork };
 
             container.Column(column =>
             {
@@ -572,6 +568,7 @@ namespace CoreCare.Services
                 UpgradeProfile.General => "Uso ligero",
                 UpgradeProfile.Gaming => "Uso medio",
                 UpgradeProfile.HeavyWork => "Uso pesado",
+                UpgradeProfile.VeryHeavyWork => "Uso muy pesado",
                 _ => "Uso ligero"
             };
 
@@ -581,6 +578,7 @@ namespace CoreCare.Services
                 UpgradeProfile.General => "Pensado para navegación, correo, ofimática, videollamadas, música, streaming y tareas diarias. Se prioriza fluidez, bajo coste y estabilidad, no rendimiento extremo.",
                 UpgradeProfile.Gaming => "Pensado para multitarea frecuente, muchas pestañas, aplicaciones de estudio o trabajo, edición ligera y videojuegos casuales/eSports a 1080p. Se busca equilibrio entre CPU, RAM, GPU y almacenamiento.",
                 UpgradeProfile.HeavyWork => "Pensado para videojuegos exigentes, edición de foto/vídeo, 3D, máquinas virtuales, compilación, análisis de datos y cargas sostenidas. Se valora margen de rendimiento y capacidad para trabajar durante más tiempo sin cuellos de botella.",
+                UpgradeProfile.VeryHeavyWork => "Pensado para edición profesional avanzada, 3D complejo, IA local, datasets grandes, varias máquinas virtuales, renderizado, desarrollo pesado y multitarea extrema. Se prioriza mucho margen de CPU, RAM, VRAM y almacenamiento NVMe rápido.",
                 _ => "Uso cotidiano del ordenador."
             };
 
