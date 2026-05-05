@@ -102,7 +102,7 @@ namespace CoreCare.Services
 
                 column.Item().Element(c => ComposeSection(c, "Especificaciones del sistema", ComposeSpecs));
                 column.Item().Element(c => ComposeSection(c, "Telemetría actual", ComposeTelemetryTable));
-                column.Item().Element(c => ComposeSection(c, "Recomendaciones", ComposeRecommendations));
+                column.Item().Element(c => ComposeSection(c, "Recomendaciones de IA", ComposeRecommendations));
                 column.Item().Element(c => ComposeSection(c, "Mejoras de hardware sugeridas", ComposeUpgradeAdvice));
 
                 if (_data.TelemetryWarnings.Count > 0)
@@ -186,12 +186,18 @@ namespace CoreCare.Services
 
                 if (_data.RecommendationsGeneratedLocally)
                 {
-                    column.Item().Element(c => ComposeTechnicalNote(c, "No se pudieron generar recomendaciones con IA por un error del servicio. Se muestran comprobaciones locales basadas en la telemetría disponible."));
+                    column.Item().Element(c => ComposeTechnicalNote(c, cards.Count == 0
+                        ? "No se pudieron generar recomendaciones de IA por un error del servicio."
+                        : "No se pudieron generar recomendaciones de IA por un error del servicio. Se muestran avisos locales basados en la telemetría disponible."));
                 }
 
                 if (cards.Count == 0)
                 {
-                    column.Item().Text("No se generaron recomendaciones para este dispositivo.").Italic().FontColor(Muted);
+                    column.Item().Text(_data.RecommendationsGeneratedLocally
+                        ? "No hay recomendaciones locales relevantes con la telemetría disponible."
+                        : "No se generaron recomendaciones de IA para este dispositivo.")
+                        .Italic()
+                        .FontColor(Muted);
                     return;
                 }
 
@@ -233,29 +239,6 @@ namespace CoreCare.Services
                     });
                 }
 
-                if (!string.IsNullOrWhiteSpace(card.Cost) || !string.IsNullOrWhiteSpace(card.Impact))
-                {
-                    column.Item().PaddingTop(2).Text(text =>
-                    {
-                        text.DefaultTextStyle(TextStyle.Default.FontSize(8).FontColor(Muted));
-                        if (!string.IsNullOrWhiteSpace(card.Cost))
-                        {
-                            text.Span("Coste: ").SemiBold();
-                            text.Span(card.Cost);
-                        }
-
-                        if (!string.IsNullOrWhiteSpace(card.Cost) && !string.IsNullOrWhiteSpace(card.Impact))
-                        {
-                            text.Span("   ");
-                        }
-
-                        if (!string.IsNullOrWhiteSpace(card.Impact))
-                        {
-                            text.Span("Impacto: ").SemiBold();
-                            text.Span(card.Impact);
-                        }
-                    });
-                }
             });
         }
 

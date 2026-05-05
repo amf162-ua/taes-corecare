@@ -438,16 +438,6 @@ namespace CoreCare.ViewModels
 - Impacto: Medio");
             }
 
-            if (recommendations.Count == 0)
-            {
-                recommendations.Add(@"=== NOTAS ADICIONALES ===
-[Estado general]
-- Problema: No se detectan señales críticas en la telemetría disponible.
-- Solución: Mantener revisiones periódicas y repetir el informe bajo carga si se sospecha degradación.
-- Coste: Bajo
-- Impacto: Medio");
-            }
-
             return recommendations;
         }
 
