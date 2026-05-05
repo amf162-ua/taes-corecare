@@ -12,12 +12,14 @@ namespace CoreCare.Services
     public class ReportDocument : IDocument
     {
         private readonly ReportData _data;
-        private const string Primary = "#01696F";
-        private const string Accent = "#FF6100";
-        private const string Ink = "#1F2933";
-        private const string Muted = "#697386";
-        private const string Panel = "#F6F8FA";
-        private const string Border = "#DDE3EA";
+        private const string Primary = "#0F766E";
+        private const string Ink = "#111827";
+        private const string Muted = "#6B7280";
+        private const string Surface = "#F8FAFC";
+        private const string HeaderSurface = "#F3F4F6";
+        private const string Border = "#E5E7EB";
+        private const string Warning = "#B45309";
+        private const string Critical = "#B91C1C";
 
         public ReportDocument(ReportData data)
         {
@@ -37,30 +39,35 @@ namespace CoreCare.Services
                 page.DefaultTextStyle(TextStyle.Default.FontSize(9).FontColor(Ink));
 
                 page.Header().Element(ComposeHeader);
-                page.Content().PaddingTop(18).Element(ComposeContent);
+                page.Content().PaddingTop(16).Element(ComposeContent);
                 page.Footer().Element(ComposeFooter);
             });
         }
 
         private void ComposeHeader(IContainer container)
         {
-            container.BorderBottom(1).BorderColor(Border).PaddingBottom(14).Row(row =>
+            container.BorderBottom(1).BorderColor(Border).PaddingBottom(12).Row(row =>
             {
                 row.RelativeItem().Column(column =>
                 {
-                    column.Item().Text("CoreCare").FontSize(11).SemiBold().FontColor(Primary);
-                    column.Item().Text("Informe técnico de sistema").FontSize(24).Bold().FontColor(Ink);
-                    column.Item().PaddingTop(5).Text(text =>
+                    column.Spacing(3);
+                    column.Item().Text("CoreCare").FontSize(10).SemiBold().FontColor(Primary);
+                    column.Item().Text("Informe técnico del sistema").FontSize(22).SemiBold().FontColor(Ink);
+                    column.Item().Text(text =>
                     {
+                        text.DefaultTextStyle(TextStyle.Default.FontSize(8).FontColor(Muted));
                         text.Span("Cliente: ").SemiBold();
                         text.Span(_data.ClientName);
-                        text.Span("   |   ");
+                        text.Span("  /  ");
+                        text.Span("Empresa: ").SemiBold();
+                        text.Span(_data.CompanyName);
+                        text.Span("  /  ");
                         text.Span("Fecha: ").SemiBold();
                         text.Span(_data.ReportDate.ToString("dd/MM/yyyy HH:mm"));
                     });
                 });
 
-                row.ConstantItem(120).AlignRight().Element(ComposeLogo);
+                row.ConstantItem(96).AlignRight().Element(ComposeLogo);
             });
         }
 
@@ -71,7 +78,7 @@ namespace CoreCare.Services
                 var logoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Images", "Logo_CoreCare.png");
                 if (File.Exists(logoPath))
                 {
-                    container.Height(58).Image(logoPath).FitArea();
+                    container.Height(44).Image(logoPath).FitArea();
                     return;
                 }
             }
@@ -79,10 +86,7 @@ namespace CoreCare.Services
             {
             }
 
-            container.Height(58)
-                .Border(1)
-                .BorderColor(Border)
-                .Background(Panel)
+            container.Height(44)
                 .AlignCenter()
                 .AlignMiddle()
                 .Text("CoreCare")
@@ -94,9 +98,8 @@ namespace CoreCare.Services
         {
             container.Column(column =>
             {
-                column.Spacing(16);
+                column.Spacing(15);
 
-                column.Item().Element(ComposeMetricCards);
                 column.Item().Element(c => ComposeSection(c, "Especificaciones del sistema", ComposeSpecs));
                 column.Item().Element(c => ComposeSection(c, "Telemetría actual", ComposeTelemetryTable));
                 column.Item().Element(c => ComposeSection(c, "Recomendaciones", ComposeRecommendations));
@@ -109,38 +112,13 @@ namespace CoreCare.Services
             });
         }
 
-        private void ComposeMetricCards(IContainer container)
-        {
-            container.Row(row =>
-            {
-                row.Spacing(8);
-                row.RelativeItem().Element(c => ComposeMetricCard(c, "CPU", FormatPercent(_data.TelemetryData.CpuUsagePercent), FormatMetric(_data.TelemetryData.CpuTemperatureC, "C")));
-                row.RelativeItem().Element(c => ComposeMetricCard(c, "GPU", FormatPercent(_data.TelemetryData.GpuUsagePercent), FormatMetric(_data.TelemetryData.GpuTemperatureC, "C")));
-                row.RelativeItem().Element(c => ComposeMetricCard(c, "RAM", $"{_data.TelemetryData.RamUsedGb:F1} GB", $"{_data.TelemetryData.RamTotalGb:F1} GB total"));
-                row.RelativeItem().Element(c => ComposeMetricCard(c, "Disco", FormatMetric(_data.TelemetryData.DiskUsagePercent, "%"), _data.TelemetryData.DiskType));
-            });
-        }
-
-        private static void ComposeMetricCard(IContainer container, string title, string value, string detail)
-        {
-            container.Border(1).BorderColor(Border).Background(Panel).Padding(10).Column(column =>
-            {
-                column.Item().Text(title.ToUpperInvariant()).FontSize(8).SemiBold().FontColor(Muted);
-                column.Item().PaddingTop(4).Text(value).FontSize(17).Bold().FontColor(Primary);
-                column.Item().PaddingTop(2).Text(detail).FontSize(8).FontColor(Muted);
-            });
-        }
-
         private static void ComposeSection(IContainer container, string title, Action<IContainer> content)
         {
             container.Column(column =>
             {
-                column.Spacing(7);
-                column.Item().Row(row =>
-                {
-                    row.ConstantItem(4).Height(14).Background(Accent);
-                    row.RelativeItem().PaddingLeft(7).Text(title).FontSize(13).SemiBold().FontColor(Ink);
-                });
+                column.Spacing(8);
+                column.Item().BorderBottom(1).BorderColor(Border).PaddingBottom(4)
+                    .Text(title).FontSize(12).SemiBold().FontColor(Ink);
                 column.Item().Element(content);
             });
         }
@@ -208,10 +186,7 @@ namespace CoreCare.Services
 
                 if (_data.RecommendationsGeneratedLocally)
                 {
-                    column.Item().Background("#FFF7ED").Border(1).BorderColor("#FDBA74").Padding(8)
-                        .Text("Recomendaciones generadas localmente porque la IA no respondió a tiempo.")
-                        .FontSize(8)
-                        .FontColor("#9A3412");
+                    column.Item().Element(c => ComposeTechnicalNote(c, "No se pudieron generar recomendaciones con IA por un error del servicio. Se muestran comprobaciones locales basadas en la telemetría disponible."));
                 }
 
                 if (cards.Count == 0)
@@ -229,74 +204,79 @@ namespace CoreCare.Services
 
         private static void ComposeRecommendationCard(IContainer container, RecommendationCard card)
         {
-            var color = card.Priority.Contains("alta", StringComparison.OrdinalIgnoreCase)
-                ? "#B42318"
-                : card.Priority.Contains("media", StringComparison.OrdinalIgnoreCase)
-                    ? "#B54708"
-                    : Primary;
+            var color = PriorityColor(card.Priority);
 
-            container.Border(1).BorderColor(Border).Background("#FFFFFF").Row(row =>
+            container.PaddingVertical(6).BorderBottom(1).BorderColor(Border).Column(column =>
             {
-                row.ConstantItem(5).Background(color);
-                row.RelativeItem().Padding(10).Column(column =>
+                column.Spacing(5);
+                column.Item().Row(row =>
                 {
-                    column.Spacing(5);
-                    column.Item().Text(card.Priority).FontSize(8).SemiBold().FontColor(color);
-                    column.Item().Text(card.Title).FontSize(11).SemiBold().FontColor(Ink);
-
-                    if (!string.IsNullOrWhiteSpace(card.Problem))
-                    {
-                        column.Item().Text(text =>
-                        {
-                            text.Span("Problema: ").SemiBold();
-                            text.Span(card.Problem);
-                        });
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(card.Solution))
-                    {
-                        column.Item().Text(text =>
-                        {
-                            text.Span("Solución: ").SemiBold();
-                            text.Span(card.Solution);
-                        });
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(card.Cost) || !string.IsNullOrWhiteSpace(card.Impact))
-                    {
-                        column.Item().PaddingTop(3).Text(text =>
-                        {
-                            if (!string.IsNullOrWhiteSpace(card.Cost))
-                            {
-                                text.Span("Coste: ").SemiBold();
-                                text.Span(card.Cost);
-                            }
-
-                            if (!string.IsNullOrWhiteSpace(card.Cost) && !string.IsNullOrWhiteSpace(card.Impact))
-                            {
-                                text.Span("   ");
-                            }
-
-                            if (!string.IsNullOrWhiteSpace(card.Impact))
-                            {
-                                text.Span("Impacto: ").SemiBold();
-                                text.Span(card.Impact);
-                            }
-                        });
-                    }
+                    row.RelativeItem().Text(card.Title).FontSize(10.5f).SemiBold().FontColor(Ink);
+                    row.AutoItem().Element(c => ComposeStatusBadge(c, card.Priority, color));
                 });
+
+                if (!string.IsNullOrWhiteSpace(card.Problem))
+                {
+                    column.Item().Text(text =>
+                    {
+                        text.Span("Problema: ").SemiBold().FontColor(Muted);
+                        text.Span(card.Problem).FontColor(Ink);
+                    });
+                }
+
+                if (!string.IsNullOrWhiteSpace(card.Solution))
+                {
+                    column.Item().Text(text =>
+                    {
+                        text.Span("Solución: ").SemiBold().FontColor(Muted);
+                        text.Span(card.Solution).FontColor(Ink);
+                    });
+                }
+
+                if (!string.IsNullOrWhiteSpace(card.Cost) || !string.IsNullOrWhiteSpace(card.Impact))
+                {
+                    column.Item().PaddingTop(2).Text(text =>
+                    {
+                        text.DefaultTextStyle(TextStyle.Default.FontSize(8).FontColor(Muted));
+                        if (!string.IsNullOrWhiteSpace(card.Cost))
+                        {
+                            text.Span("Coste: ").SemiBold();
+                            text.Span(card.Cost);
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(card.Cost) && !string.IsNullOrWhiteSpace(card.Impact))
+                        {
+                            text.Span("   ");
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(card.Impact))
+                        {
+                            text.Span("Impacto: ").SemiBold();
+                            text.Span(card.Impact);
+                        }
+                    });
+                }
             });
         }
 
         private void ComposeWarnings(IContainer container)
         {
-            container.Background("#FFFBEB").Border(1).BorderColor("#FCD34D").Padding(9).Column(column =>
+            container.Column(column =>
             {
-                column.Spacing(3);
+                column.Spacing(5);
                 foreach (var warning in _data.TelemetryWarnings.Where(w => !string.IsNullOrWhiteSpace(w)))
                 {
-                    column.Item().Text("- " + warning).FontSize(8).FontColor("#92400E");
+                    column.Item().Element(c => ComposeTechnicalNote(c, warning));
                 }
+            });
+        }
+
+        private static void ComposeTechnicalNote(IContainer container, string message)
+        {
+            container.Background(Surface).Padding(8).Row(row =>
+            {
+                row.ConstantItem(2).Background(Border);
+                row.RelativeItem().PaddingLeft(8).Text(message).FontSize(8).FontColor(Muted);
             });
         }
 
@@ -317,15 +297,19 @@ namespace CoreCare.Services
 
         private void ComposeUpgradeProfileBlock(IContainer container, UpgradeProfile profile)
         {
-            container.Border(1).BorderColor(Border).Background("#FFFFFF").Padding(11).Column(column =>
+            container.PaddingTop(4).Column(column =>
             {
-                column.Spacing(9);
+                column.Spacing(8);
 
-                column.Item().Column(header =>
+                column.Item().Row(row =>
                 {
-                    header.Spacing(3);
-                    header.Item().Text(ProfileLabel(profile)).FontSize(12).SemiBold().FontColor(Primary);
-                    header.Item().Text(ProfileDescription(profile)).FontSize(8).FontColor(Muted);
+                    row.ConstantItem(3).Background(Primary);
+                    row.RelativeItem().PaddingLeft(8).Column(header =>
+                    {
+                        header.Spacing(2);
+                        header.Item().Text(ProfileLabel(profile)).FontSize(11.5f).SemiBold().FontColor(Ink);
+                        header.Item().Text(ProfileDescription(profile)).FontSize(8).FontColor(Muted);
+                    });
                 });
 
                 column.Item().Element(c => ComposeProfileScoreTable(c, profile));
@@ -348,9 +332,9 @@ namespace CoreCare.Services
 
                 table.Header(header =>
                 {
-                    header.Cell().Background(Primary).Padding(6).Text("Componente").FontColor("#FFFFFF").SemiBold();
-                    header.Cell().Background(Primary).Padding(6).Text("Puntuación").FontColor("#FFFFFF").SemiBold();
-                    header.Cell().Background(Primary).Padding(6).Text("Lectura").FontColor("#FFFFFF").SemiBold();
+                    AddHeaderCell(header, "Componente");
+                    AddHeaderCell(header, "Puntuación");
+                    AddHeaderCell(header, "Lectura");
                 });
 
                 foreach (var component in components)
@@ -378,7 +362,7 @@ namespace CoreCare.Services
 
                 if (recommendations.Count == 0)
                 {
-                    column.Item().Background(Panel).Border(1).BorderColor(Border).Padding(8)
+                    column.Item().Background(Surface).Padding(8)
                         .Text("No hay reemplazos prioritarios para esta categoría: los componentes alcanzan una puntuación aceptable.")
                         .FontSize(8)
                         .FontColor(Muted);
@@ -394,59 +378,65 @@ namespace CoreCare.Services
 
         private static void ComposeUpgradeCard(IContainer container, UpgradeRecommendation recommendation)
         {
-            var color = recommendation.Priority.Equals("Alta", StringComparison.OrdinalIgnoreCase) ? "#B42318" : "#B54708";
+            var color = PriorityColor(recommendation.Priority);
 
-            container.Border(1).BorderColor(Border).Background("#FFFFFF").Row(row =>
+            container.PaddingVertical(6).BorderBottom(1).BorderColor(Border).Column(column =>
             {
-                row.ConstantItem(5).Background(color);
-                row.RelativeItem().Padding(10).Column(column =>
+                column.Spacing(5);
+                column.Item().Row(row =>
                 {
-                    column.Spacing(5);
-                    column.Item().Text($"{recommendation.Priority.ToUpperInvariant()} · {ProfileLabel(recommendation.Profile)}").FontSize(8).SemiBold().FontColor(color);
-                    column.Item().Text($"{recommendation.Component}: {recommendation.SuggestedUpgrade}").FontSize(11).SemiBold().FontColor(Ink);
-                    column.Item().Text(text =>
-                    {
-                        text.Span("Actual: ").SemiBold();
-                        text.Span(recommendation.CurrentComponent);
-                        text.Span($"   Puntuación: {recommendation.CurrentScore:F1}/10");
-                    });
-                    column.Item().Text(recommendation.Reason).FontSize(8).FontColor(Ink);
-                    column.Item().Text(text =>
-                    {
-                        text.Span("Rango orientativo: ").SemiBold();
-                        text.Span(recommendation.PriceRange);
-                    });
-
-                    if (!string.IsNullOrWhiteSpace(recommendation.CompatibilityNote))
-                    {
-                        column.Item().Text(recommendation.CompatibilityNote).FontSize(8).Italic().FontColor(Muted);
-                    }
-
-                    if (recommendation.PurchaseLinks.Count > 0)
-                    {
-                        column.Item().PaddingTop(3).Text(text =>
-                        {
-                            text.Span("Buscar: ").SemiBold();
-                            for (int i = 0; i < recommendation.PurchaseLinks.Count; i++)
-                            {
-                                var link = recommendation.PurchaseLinks[i];
-                                if (i > 0)
-                                {
-                                    text.Span("   ");
-                                }
-
-                                text.Span($"{link.Store}: {link.Url}").FontColor(Primary).FontSize(7);
-                            }
-                        });
-                    }
+                    row.RelativeItem().Text($"{recommendation.Component}: {recommendation.SuggestedUpgrade}").FontSize(10).SemiBold().FontColor(Ink);
+                    row.AutoItem().Element(c => ComposeStatusBadge(c, recommendation.Priority, color));
                 });
+
+                column.Item().Text(text =>
+                {
+                    text.DefaultTextStyle(TextStyle.Default.FontSize(8).FontColor(Muted));
+                    text.Span("Actual: ").SemiBold();
+                    text.Span(recommendation.CurrentComponent);
+                    text.Span("   ");
+                    text.Span("Puntuación: ").SemiBold();
+                    text.Span($"{recommendation.CurrentScore:F1}/10");
+                });
+
+                column.Item().Text(recommendation.Reason).FontSize(8).FontColor(Ink);
+                column.Item().Text(text =>
+                {
+                    text.DefaultTextStyle(TextStyle.Default.FontSize(8).FontColor(Muted));
+                    text.Span("Rango orientativo: ").SemiBold();
+                    text.Span(recommendation.PriceRange);
+                });
+
+                if (!string.IsNullOrWhiteSpace(recommendation.CompatibilityNote))
+                {
+                    column.Item().Text(recommendation.CompatibilityNote).FontSize(8).Italic().FontColor(Muted);
+                }
+
+                if (recommendation.PurchaseLinks.Count > 0)
+                {
+                    column.Item().PaddingTop(2).Text(text =>
+                    {
+                        text.DefaultTextStyle(TextStyle.Default.FontSize(7).FontColor(Muted));
+                        text.Span("Buscar: ").SemiBold();
+                        for (int i = 0; i < recommendation.PurchaseLinks.Count; i++)
+                        {
+                            var link = recommendation.PurchaseLinks[i];
+                            if (i > 0)
+                            {
+                                text.Span("   ");
+                            }
+
+                            text.Span($"{link.Store}: {link.Url}").FontColor(Primary);
+                        }
+                    });
+                }
             });
         }
 
         private static void AddScoreCell(TableDescriptor table, double? score)
         {
             var value = score ?? 0;
-            var color = value < 4.5 ? "#B42318" : value < 6.5 ? "#B54708" : Primary;
+            var color = ScoreColor(value);
             table.Cell().BorderBottom(1).BorderColor(Border).Padding(6)
                 .Text(score.HasValue ? $"{value:F1}/10" : "N/A")
                 .FontColor(color)
@@ -455,12 +445,18 @@ namespace CoreCare.Services
 
         private static void AddLabelCell(TableDescriptor table, string label)
         {
-            table.Cell().BorderBottom(1).BorderColor(Border).Background(Panel).Padding(6).Text(label).SemiBold().FontColor(Muted);
+            table.Cell().BorderBottom(1).BorderColor(Border).Padding(6).Text(label).SemiBold().FontColor(Muted);
         }
 
         private static void AddValueCell(TableDescriptor table, string value)
         {
             table.Cell().BorderBottom(1).BorderColor(Border).Padding(6).Text(string.IsNullOrWhiteSpace(value) ? "N/A" : value).FontColor(Ink);
+        }
+
+        private static void AddHeaderCell(TableCellDescriptor table, string label)
+        {
+            table.Cell().Background(HeaderSurface).BorderBottom(1).BorderColor(Border).Padding(6)
+                .Text(label.ToUpperInvariant()).FontSize(7).SemiBold().FontColor(Muted);
         }
 
         private static string FormatPercent(double value)
@@ -546,6 +542,26 @@ namespace CoreCare.Services
 
         private static string AppendText(string current, string next)
             => string.IsNullOrWhiteSpace(current) ? next : current + " " + next;
+
+        private static void ComposeStatusBadge(IContainer container, string label, string color)
+        {
+            container.Background("#FFFFFF").Border(1).BorderColor(Border).PaddingHorizontal(6).PaddingVertical(2)
+                .Text(label.ToUpperInvariant()).FontSize(6.5f).SemiBold().FontColor(color);
+        }
+
+        private static string PriorityColor(string priority)
+            => priority.Contains("alta", StringComparison.OrdinalIgnoreCase)
+                ? Critical
+                : priority.Contains("media", StringComparison.OrdinalIgnoreCase)
+                    ? Warning
+                    : Primary;
+
+        private static string ScoreColor(double score)
+            => score < 4.5
+                ? Critical
+                : score < 6.5
+                    ? Warning
+                    : Primary;
 
         private static string ProfileLabel(UpgradeProfile profile)
             => profile switch

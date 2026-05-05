@@ -379,16 +379,16 @@ namespace CoreCare.ViewModels
 
         private async Task<(System.Collections.Generic.List<string> Recommendations, bool GeneratedLocally)> GetFastRecommendationsAsync(SystemTelemetryMock telemetryData, SystemSpecs systemSpecs)
         {
-            var aiTask = _geminiService.GetRecommendationsAsync(telemetryData, systemSpecs);
-            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(8));
-
-            if (await Task.WhenAny(aiTask, timeoutTask) == aiTask)
+            try
             {
-                var aiResponse = await aiTask;
+                var aiResponse = await _geminiService.GetRecommendationsAsync(telemetryData, systemSpecs);
                 if (!aiResponse.StartsWith("Error:", StringComparison.OrdinalIgnoreCase))
                 {
                     return (new System.Collections.Generic.List<string> { aiResponse }, false);
                 }
+            }
+            catch
+            {
             }
 
             return (BuildLocalRecommendations(telemetryData, systemSpecs), true);
@@ -398,11 +398,11 @@ namespace CoreCare.ViewModels
         {
             var recommendations = new System.Collections.Generic.List<string>();
 
-            if (telemetryData.CpuUsagePercent > 80 || telemetryData.CpuTemperatureC < 0)
+            if (telemetryData.CpuUsagePercent > 80 || telemetryData.CpuTemperatureC > 85)
             {
                 recommendations.Add($@"=== PRIORIDAD ALTA ===
 [CPU]
-- Problema: {(telemetryData.CpuTemperatureC < 0 ? "No se pudo leer la temperatura del procesador; sin ese dato no se puede validar el margen térmico." : $"El uso de CPU está en {telemetryData.CpuUsagePercent:F1}%, por encima del rango cómodo para uso sostenido.")}
+- Problema: {(telemetryData.CpuTemperatureC > 85 ? $"La temperatura de CPU alcanza {telemetryData.CpuTemperatureC:F1} C, por encima del rango recomendado para uso sostenido." : $"El uso de CPU está en {telemetryData.CpuUsagePercent:F1}%, por encima del rango cómodo para uso sostenido.")}
 - Solución: Ejecutar CoreCare como administrador, comprobar refrigeración y cerrar procesos intensivos antes de tareas críticas.
 - Coste: Bajo / Medio
 - Impacto: Alto");
@@ -418,11 +418,11 @@ namespace CoreCare.ViewModels
 - Impacto: Medio / Alto");
             }
 
-            if (telemetryData.DiskUsagePercent < 0 || telemetryData.DiskUsagePercent > 80)
+            if (telemetryData.DiskUsagePercent > 80)
             {
                 recommendations.Add($@"=== PRIORIDAD MEDIA ===
 [Almacenamiento]
-- Problema: {(telemetryData.DiskUsagePercent < 0 ? "No se pudo leer el contador de actividad de disco." : $"El disco presenta una carga elevada ({telemetryData.DiskUsagePercent:F1}%).")}
+- Problema: El disco presenta una carga elevada ({telemetryData.DiskUsagePercent:F1}%).
 - Solución: Revisar procesos de escritura, estado SMART y espacio disponible en {systemSpecs.DiskModel}.
 - Coste: Bajo
 - Impacto: Medio");
