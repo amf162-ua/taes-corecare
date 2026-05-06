@@ -2,7 +2,6 @@
 using System.Data;
 using System.Windows;
 using CoreCare.Data;
-using CoreCare.Services;
 
 namespace CoreCare
 {
@@ -19,20 +18,13 @@ namespace CoreCare
         {
             base.OnStartup(e);
 
-            using (var db = new CoreCare.Data.CoreCareDbContext())
+            // Aceptar licencia comunitaria y gratuita de QuestPDF globalmente en toda la aplicación
+            QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
+            // Asegurarse de que la base de datos se crea al iniciar la aplicación
+            using (var db = new CoreCareDbContext())
             {
                 db.Database.EnsureCreated();
-            }
-
-            // Temporalmente forzamos a que arranque SIEMPRE la UI
-            // bool runTerminalMenu = !e.Args.Contains("--ui", StringComparer.OrdinalIgnoreCase);
-            bool runTerminalMenu = false; // <-- CAMBIO AQUÍ
-
-            if (runTerminalMenu)
-            {
-                CoreCare.Services.TerminalBenchmarkMenuService.RunInteractiveMenu();
-                Shutdown();
-                return;
             }
         }
 
