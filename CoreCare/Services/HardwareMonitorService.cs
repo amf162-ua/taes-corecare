@@ -198,6 +198,9 @@ namespace CoreCare.Services
             _tempWindowIndex = (_tempWindowIndex + 1) % _windowLimit;
             if (_tempReadingsCount < _windowLimit) _tempReadingsCount++;
 
+            // SOLUCIÓN 1: Calculamos la media de temperatura antes de usarla
+            float avgTemp = _cpuTempWindow.Take(_tempReadingsCount).Average();
+
             value = new TelemetryData
             {
                 Value = avgTemp,
@@ -210,7 +213,7 @@ namespace CoreCare.Services
         public TelemetryData GetCpuTemperature()
             => TryGetCpuTemperature(out var value, out _) ? value : default;
 
-       
+
         public bool TryGetCpuLoad(out float value, out string reason)
         {
             value = 0f;
@@ -425,10 +428,15 @@ namespace CoreCare.Services
                 s.SensorType == SensorType.Load &&
                 s.Name.Contains("Used", StringComparison.OrdinalIgnoreCase));
 
+            // SOLUCIÓN 2: Guardamos el valor del sensor de carga para poder usarlo abajo
+            float load = loadSensor?.Value ?? 0f;
+
             var readMbit = TryGetDiskReadRateMbit(out var readRate, out _) ? readRate : 0f;
             var writeMbit = TryGetDiskWriteRateMbit(out var writeRate, out _) ? writeRate : 0f;
             var throughputMbit = readMbit + writeMbit;
-            if (throughputMbit > 0.5f)
+
+            // Si hay tráfico o el sensor devuelve alguna carga, devolvemos 'load'
+            if (throughputMbit > 0.5f || load > 0f)
             {
                 value = load;
                 return true;
@@ -663,6 +671,12 @@ namespace CoreCare.Services
 
             // Default for LibreHardwareMonitor throughput sensors.
             return (rawValue * 8f) / 1_000f;
+        }
+
+        // SOLUCIÓN 3: Añadimos la función ClampPercent para evitar lecturas de disco por encima del 100%
+        private static float ClampPercent(float value)
+        {
+            return Math.Clamp(value, 0f, 100f);
         }
 
         public void Dispose() => _computer.Close();

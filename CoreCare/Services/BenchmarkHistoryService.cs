@@ -52,7 +52,8 @@ namespace CoreCare.Services
         {
             if (history.Count < windowSize * 2)
             {
-                return new DegradationAnalysis { IsDegraded = false, Message = "Datos insuficientes." };
+                // SOLUCIÓN: Añadido HasEnoughData = false
+                return new DegradationAnalysis { IsDegraded = false, Message = "Datos insuficientes.", HasEnoughData = false };
             }
 
             var ordered = history.OrderBy(r => r.Timestamp).ToList();
@@ -66,8 +67,24 @@ namespace CoreCare.Services
             {
                 IsDegraded = isDegraded,
                 ScoreDropPercent = drop,
-                Message = isDegraded ? $"Rendimiento bajo un {drop:F1}%" : "Rendimiento estable"
+                Message = isDegraded ? $"Rendimiento bajo un {drop:F1}%" : "Rendimiento estable",
+                HasEnoughData = true // SOLUCIÓN: Añadido HasEnoughData = true
             };
+        }
+
+        // SOLUCIÓN: Añadido el método BuildTrend que pedía el MainViewModel
+        public List<BenchmarkTrendPoint> BuildTrend(IReadOnlyCollection<RegistroBenchmark> history)
+        {
+            if (history == null || history.Count == 0)
+                return new List<BenchmarkTrendPoint>();
+
+            return history.Select(h => new BenchmarkTrendPoint
+            {
+                Timestamp = h.Timestamp,
+                Score = h.Score
+            })
+            .OrderBy(x => x.Timestamp)
+            .ToList();
         }
     }
 
@@ -76,5 +93,15 @@ namespace CoreCare.Services
         public bool IsDegraded { get; set; }
         public float ScoreDropPercent { get; set; }
         public string Message { get; set; } = string.Empty;
+
+        // SOLUCIÓN: Añadida la propiedad que faltaba
+        public bool HasEnoughData { get; set; }
+    }
+
+    // SOLUCIÓN: Añadida la clase de puntos de tendencia para la gráfica
+    public sealed class BenchmarkTrendPoint
+    {
+        public DateTime Timestamp { get; set; }
+        public float Score { get; set; }
     }
 }

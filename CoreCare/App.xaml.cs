@@ -1,7 +1,9 @@
-﻿using System.Configuration;
+﻿using System;
+using System.Configuration;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using CoreCare.Data;
 using CoreCare.Orchestrators;
@@ -17,17 +19,49 @@ namespace CoreCare
         public static bool IsUserLoggedIn { get; set; } = false;
         public static string CurrentUsername { get; set; } = "Invitado";
         public static bool IsPremium { get; set; } = false;
-        // Instancias únicas de los servicios para evitar conflictos de sensores
-        public static HardwareMonitorService Monitor { get; } = new();
-        public static ProcessService Processes { get; } = new ProcessService();
-        public static BenchmarkOrchestrator Orchestrator { get; } = new(Monitor, new Models.StressWorker());
+
+        // Instancias únicas de los servicios (Quitamos el '= new()' de aquí para controlarlo abajo)
+        public static HardwareMonitorService Monitor { get; private set; }
+        public static ProcessService Processes { get; private set; }
+        public static BenchmarkOrchestrator Orchestrator { get; private set; }
+
+        public App()
+        {
+            // CAZADOR GLOBAL: Atrapa cualquier error inesperado de la interfaz y evita que se cierre en silencio
+            this.DispatcherUnhandledException += (sender, e) =>
+            {
+                MessageBox.Show($"Error crítico durante la ejecución:\n\n{e.Exception.Message}\n\n¿Falta alguna referencia?",
+                                "Fallo Fatal", MessageBoxButton.OK, MessageBoxImage.Error);
+                e.Handled = true;
+            };
+        }
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            base.OnStartup(e);
+            try
+            {
+                // 1. Inicializamos los sensores globales
+                Monitor = new HardwareMonitorService();
+                Processes = new ProcessService();
+                Orchestrator = new BenchmarkOrchestrator(Monitor, new Models.StressWorker());
 
-            using var db = new CoreCareDbContext();
-            db.Database.EnsureCreated();
+                // 2. Base de Datos
+                using var db = new CoreCareDbContext();
+                db.Database.EnsureCreated();
+                SeedDefaultUsers(db);
+
+                // ¡AQUÍ ESTÁ LA MAGIA! Obligamos a WPF a pintar la ventana en pantalla.
+                // (Nota: Si tu app empieza con una ventana de Login, cambia MainWindow por LoginWindow)
+                var mainWindow = new MainWindow();
+                mainWindow.Show();
+
+                base.OnStartup(e);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"La aplicación no pudo arrancar:\n\n{ex.Message}", "Fallo", MessageBoxButton.OK, MessageBoxImage.Error);
+                Shutdown();
+            }
         }
 
         private static void SeedDefaultUsers(CoreCareDbContext db)
@@ -82,5 +116,9 @@ namespace CoreCare
             }
         }
 
+        private static void LogStartup(string message)
+        {
+            Debug.WriteLine($"[CoreCare DB-Seeder] {message}");
+        }
     }
 }

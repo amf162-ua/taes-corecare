@@ -15,10 +15,10 @@ namespace CoreCare.Views.Modals
         {
             InitializeComponent();
 
-            // Configurar datos básicos del usuario[cite: 14]
+            // Configurar datos básicos del usuario
             TxtUserName.Text = userName;
 
-            // Gestión visual del estado Premium[cite: 14, 15]
+            // Gestión visual del estado Premium
             if (isPremium)
             {
                 PremiumBadge.Visibility = Visibility.Visible;
@@ -36,25 +36,25 @@ namespace CoreCare.Views.Modals
 
         private void LoadRealHardwareData()
         {
-            // Accedemos al servicio de monitorización[cite: 11]
+            // Accedemos al servicio de monitorización
             var monitor = App.Monitor;
-            monitor.UpdateHardware(); // Actualizamos sensores antes de leer[cite: 11]
+            monitor.UpdateHardware(); // Actualizamos sensores antes de leer
 
             _hardwareData = new HardwareProfile();
 
-            // 1. Detección de CPU (Núcleos y Velocidad real)[cite: 11]
+            // 1. Detección de CPU (Núcleos y Velocidad real)
             if (monitor.TryGetCpuClockGHz(out float clock, out _))
             {
                 _hardwareData.Cpu = $"Intel/AMD ({monitor.Cores} Cores) @ {clock:F2} GHz";
             }
 
-            // 2. Detección de RAM (Uso actual en GB)[cite: 11]
+            // 2. Detección de RAM (Uso actual en GB)
             if (monitor.TryGetRamUsageGb(out float ramUsed, out _))
             {
                 _hardwareData.Ram = $"{ramUsed:F1} GB en uso actual";
             }
 
-            // 3. Detección de GPU (Carga y Temperatura si está disponible)[cite: 11]
+            // 3. Detección de GPU (Carga y Temperatura si está disponible)
             if (monitor.TryGetGpuLoad(out float gLoad, out _) && monitor.TryGetGpuTemperature(out float gTemp, out _))
             {
                 _hardwareData.Gpu = $"GPU Activa: {gLoad:F0}% Carga / {gTemp:F0}°C";
@@ -64,48 +64,24 @@ namespace CoreCare.Views.Modals
                 _hardwareData.Gpu = "GPU Detectada (Sin sensores de telemetría)";
             }
 
-            // 4. Actividad del Almacenamiento[cite: 11]
+            // 4. Actividad del Almacenamiento
             if (monitor.TryGetDiskLoad(out float dLoad, out _))
             {
                 _hardwareData.Storage = $"Actividad de Disco: {dLoad:F1}%";
             }
 
-            // 5. Datos de Placa Base y Sistema (Uptime)[cite: 11]
+            // 5. Datos de Placa Base y Sistema (Uptime)
             _hardwareData.Motherboard = $"Sistema Operativo (Uptime: {monitor.GetUpTime()})";
 
-            // Vinculamos los datos reales al formulario XAML[cite: 14, 15]
+            // Vinculamos los datos reales al formulario XAML
             HardwareFormPanel.DataContext = _hardwareData;
-        }
-
-        private void BtnUpgrade_Click(object sender, RoutedEventArgs e)
-        {
-            // Cerramos o minimizamos el perfil si quieres, pero lo mejor es abrirlo encima
-            var premiumWin = new PremiumWindow();
-            premiumWin.Owner = this; // Esta ventana es la dueña ahora
-
-            if (premiumWin.ShowDialog() == true)
-            {
-                var paymentWin = new PaymentWindow();
-                paymentWin.Owner = this;
-
-                if (paymentWin.ShowDialog() == true)
-                {
-                    App.IsPremium = true;
-
-                    // Actualizamos visualmente el perfil sin cerrarlo
-                    PremiumBadge.Visibility = Visibility.Visible;
-                    PremiumPurchaseSection.Visibility = Visibility.Collapsed;
-
-                    MessageBox.Show("¡Bienvenido a Premium!", "Éxito");
-                }
-            }
         }
 
         private void BtnEditSave_Click(object sender, RoutedEventArgs e)
         {
             if (!_isEditing)
             {
-                // Iniciar modo edición: creamos respaldo[cite: 14]
+                // Iniciar modo edición: creamos respaldo
                 _isEditing = true;
                 _backupData = new HardwareProfile
                 {
@@ -123,7 +99,7 @@ namespace CoreCare.Views.Modals
             }
             else
             {
-                // Finalizar edición y guardar cambios[cite: 14]
+                // Finalizar edición y guardar cambios
                 _isEditing = false;
                 HardwareFormPanel.IsEnabled = false;
                 BtnEditSave.Content = "EDITAR";
@@ -136,7 +112,7 @@ namespace CoreCare.Views.Modals
 
         private void BtnCancel_Click(object sender, RoutedEventArgs e)
         {
-            // Restaurar datos desde el respaldo[cite: 14]
+            // Restaurar datos desde el respaldo
             _hardwareData.Cpu = _backupData.Cpu;
             _hardwareData.Gpu = _backupData.Gpu;
             _hardwareData.Ram = _backupData.Ram;
@@ -149,14 +125,15 @@ namespace CoreCare.Views.Modals
             BtnEditSave.Background = new SolidColorBrush(Color.FromRgb(0, 139, 139));
             BtnCancelEdit.Visibility = Visibility.Collapsed;
 
-            // Refrescar el enlace de datos[cite: 14]
+            // Refrescar el enlace de datos
             HardwareFormPanel.DataContext = null;
             HardwareFormPanel.DataContext = _hardwareData;
         }
 
+        // ¡Aquí estaba el problema! He dejado solo esta versión que es más limpia
         private void BtnUpgrade_Click(object sender, RoutedEventArgs e)
         {
-            // Flujo de actualización a Premium[cite: 14]
+            // Flujo de actualización a Premium
             var premiumWin = new PremiumWindow { Owner = this };
 
             if (premiumWin.ShowDialog() == true)

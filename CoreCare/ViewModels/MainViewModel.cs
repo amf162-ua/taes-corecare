@@ -139,8 +139,8 @@ namespace CoreCare.ViewModels
 
         public MainViewModel()
         {
-            _hardwareService = new HardwareMonitorService();
-            _processService = new ProcessService();
+            _hardwareService = App.Monitor;
+            _processService = App.Processes;
             _geminiService = new GeminiAIService();
             _systemSpecsService = new SystemSpecsService();
             _upgradeAdvisorService = new HardwareUpgradeAdvisorService();
