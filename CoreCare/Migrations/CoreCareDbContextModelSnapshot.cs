@@ -110,6 +110,11 @@ namespace CoreCare.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasDefaultValue("Client")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Plan")
                         .IsRequired()
                         .HasColumnType("TEXT");

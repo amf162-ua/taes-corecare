@@ -46,6 +46,23 @@ namespace CoreCare.ViewModels
         [ObservableProperty]
         private string _historyUserLabel = "Usuario: -";
 
+        public bool IsAuthenticated => SessionService.CurrentUser != null;
+
+        public bool IsAdministrador => SessionService.CurrentUser?.Role == UserRole.Administrador;
+
+        public bool IsCliente => SessionService.CurrentUser?.Role == UserRole.Cliente;
+
+        public string CurrentUserDisplayName => SessionService.CurrentUser == null
+            ? "Invitado"
+            : (string.IsNullOrWhiteSpace(SessionService.CurrentUser.username) ? SessionService.CurrentUser.name : SessionService.CurrentUser.username);
+
+        public string CurrentRoleLabel => SessionService.CurrentUser?.Role switch
+        {
+            UserRole.Administrador => "Administrador",
+            UserRole.Cliente => "Cliente",
+            _ => "Sin rol"
+        };
+
         [ObservableProperty]
         private string _degradationStatus = "Analisis de degradacion pendiente.";
 
@@ -133,6 +150,7 @@ namespace CoreCare.ViewModels
             _refreshTimer.Start();
 
             SelectedBenchmarkOption = BenchmarkOptions.Last();
+            HistoryUserLabel = $"Usuario: {CurrentUserDisplayName} ({CurrentRoleLabel})";
 
             UpdateAllData();
             LoadHistory();
@@ -175,6 +193,12 @@ namespace CoreCare.ViewModels
                 return;
             }
 
+            if (!IsAuthenticated)
+            {
+                BenchmarkStatus = "Debes iniciar sesión para ejecutar benchmarks.";
+                return;
+            }
+
             IsBenchmarkRunning = true;
             BenchmarkStatus = "Iniciando benchmark...";
 
@@ -200,7 +224,7 @@ namespace CoreCare.ViewModels
                 var registro = await benchmarkTask;
 
                 using var db = new CoreCareDbContext();
-                registro.UserId = GetOrCreateSystemUserId(db);
+                registro.UserId = SessionService.CurrentUser!.Id;
                 db.RegistrosBenchmark.Add(registro);
                 db.SaveChanges();
 
@@ -226,6 +250,12 @@ namespace CoreCare.ViewModels
         public void TerminateProcess(ProcessItem process)
         {
             if (process == null) return;
+
+            if (!IsAdministrador)
+            {
+                MessageBox.Show("Esta acción solo está disponible para administradores.", "Acceso denegado", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
 
             var result = MessageBox.Show(
                 $"¿Seguro que quieres cerrar {process.Name}?\nSe perderán los datos no guardados.",
@@ -447,7 +477,15 @@ namespace CoreCare.ViewModels
             try
             {
                 using var db = new CoreCareDbContext();
-                var currentUser = GetOrCreateSystemUser(db);
+                var currentUser = SessionService.CurrentUser;
+
+                if (currentUser == null)
+                {
+                    HistoryStatus = "Debes iniciar sesión para consultar el historial.";
+                    HistoryUserLabel = "Usuario: -";
+                    return;
+                }
+
                 int userId = currentUser.Id;
 
                 var historyService = new BenchmarkHistoryService(db);
@@ -493,7 +531,7 @@ namespace CoreCare.ViewModels
                 string username = string.IsNullOrWhiteSpace(currentUser.username)
                     ? currentUser.name
                     : currentUser.username;
-                HistoryUserLabel = $"Usuario: {username}";
+                HistoryUserLabel = $"Usuario: {username} ({currentUser.Role})";
                 HistoryStatus = $"{history.Count} registros en el rango {from:yyyy-MM-dd} a {to:yyyy-MM-dd}.";
 
                 var trend = historyService.BuildTrend(history);
@@ -637,35 +675,6 @@ namespace CoreCare.ViewModels
             builder.AppendLine("-------------------------------------------");
 
             return builder.ToString();
-        }
-
-        private static int GetOrCreateSystemUserId(CoreCareDbContext db)
-            => GetOrCreateSystemUser(db).Id;
-
-        private static User GetOrCreateSystemUser(CoreCareDbContext db)
-        {
-            var existingUser = db.Users.FirstOrDefault(user => user.IsActive);
-
-            if (existingUser != null)
-            {
-                return existingUser;
-            }
-
-            var systemUser = new User
-            {
-                name = "prueba",
-                username = "prueba",
-                email = "prueba@corecare.local",
-                password = string.Empty,
-                createdAt = DateTime.UtcNow,
-                IsActive = true,
-                Plan = TipoPlan.Basico
-            };
-
-            db.Users.Add(systemUser);
-            db.SaveChanges();
-
-            return systemUser;
         }
 
         public sealed class BenchmarkOptionItem

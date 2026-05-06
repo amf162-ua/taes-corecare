@@ -1,4 +1,5 @@
 ﻿using CoreCare.ViewModels;
+using CoreCare.Services;
 using OxyPlot;
 using OxyPlot.Series;
 using OxyPlot.Axes;
@@ -41,6 +42,31 @@ namespace CoreCare
                     Dispatcher.BeginInvoke(new Action(DrawHeatmap), System.Windows.Threading.DispatcherPriority.Background);
                 }
             };
+        }
+
+        private void Logout_Click(object sender, RoutedEventArgs e)
+        {
+            var result = MessageBox.Show(
+                "¿Cerrar sesión actual?",
+                "CoreCare",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            SessionService.SignOut();
+
+            // Show the login window and close this main window so only one window remains.
+            var loginWindow = new LoginWindow();
+            // Set as current main window so the application's MainWindow reference is valid
+            Application.Current.MainWindow = loginWindow;
+            loginWindow.Show();
+
+            // Close this window (the logged-out main window). Do not shutdown the application.
+            Close();
         }
 
         private void TrendPlot_MouseLeave(object sender, MouseEventArgs e)

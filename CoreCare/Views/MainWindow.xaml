@@ -6,11 +6,34 @@
     Title="CoreCare - Monitor de Sistema" Height="600" Width="800">
 
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <converters:InverseBoolConverter x:Key="InverseBool"/>
     </Window.Resources>
 
     <Grid Background="#F5F5F7">
-        <TabControl Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#0E2F33" Padding="12,10" Margin="10,10,10,0" CornerRadius="8">
+            <DockPanel LastChildFill="False">
+                <StackPanel DockPanel.Dock="Left">
+                    <TextBlock Text="CoreCare" Foreground="White" FontSize="18" FontWeight="Bold"/>
+                    <TextBlock Text="{Binding HistoryUserLabel}" Foreground="#D7E7E4" FontSize="12"/>
+                </StackPanel>
+
+                <Button DockPanel.Dock="Right"
+                        Content="Cerrar sesión"
+                        Padding="14,6"
+                        Margin="12,0,0,0"
+                        Background="#D95C5C"
+                        Foreground="White"
+                        Click="Logout_Click"/>
+            </DockPanel>
+        </Border>
+
+        <TabControl Grid.Row="1" Margin="10">
             <TabItem Header="Benchmark">
                 <Grid Margin="10">
                     <Grid.RowDefinitions>
@@ -60,7 +83,7 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="Monitor">
+            <TabItem Header="Monitor" Visibility="{Binding IsAuthenticated, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -120,6 +143,7 @@
                                         <Button Content="Finalizar"
                                                 Command="{Binding DataContext.TerminateProcessCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                 CommandParameter="{Binding}"
+                                                Visibility="{Binding DataContext.IsAdministrador, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                 Background="#FF5252"
                                                 Foreground="White"
                                                 FontSize="10"
