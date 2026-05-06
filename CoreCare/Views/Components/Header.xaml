@@ -3,7 +3,45 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Height="70">
 
-    <Border Background="#151a2e" BorderBrush="#3300FFFF" BorderThickness="0,0,0,1" Padding="20,0">
+    <UserControl.Resources>
+        <Style x:Key="TopNavButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#F4F6F8"/>
+            <Setter Property="Foreground" Value="#1B1F24"/>
+            <Setter Property="BorderBrush" Value="#C9D1D8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="14,6"/>
+            <Setter Property="Margin" Value="5,0"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              TextElement.Foreground="{TemplateBinding Foreground}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#E8EDF2"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#D6DEE6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Border Background="#F8FAFC" BorderBrush="#D4D1CA" BorderThickness="0,0,0,1" Padding="20,0">
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -11,18 +49,18 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left">
-                <TextBlock Text="CORE CARE" Foreground="Cyan" FontSize="20" FontWeight="Black" VerticalAlignment="Center" Margin="0,0,30,0"/>
+                <TextBlock Text="CORE CARE" Foreground="#0E2F33" FontSize="20" FontWeight="Black" VerticalAlignment="Center" Margin="0,0,30,0"/>
 
-                <Button Content="Inicio" Click="BtnHome_Click" Foreground="White" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="5,0" FontSize="14" FontWeight="SemiBold"/>
-                <Button Content="Benchmarks" Click="BtnBenchmarks_Click" Foreground="White" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="5,0" FontSize="14" FontWeight="SemiBold"/>
-                <Button Content="Historial" Click="BtnHistory_Click" Foreground="White" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="5,0" FontSize="14" FontWeight="SemiBold"/>
+                <Button Content="Inicio" Click="BtnHome_Click" Style="{StaticResource TopNavButtonStyle}" Foreground="#000000"/>
+                <Button Content="Benchmarks" Click="BtnBenchmarks_Click" Style="{StaticResource TopNavButtonStyle}" Foreground="#000000"/>
+                <Button Content="Historial" Click="BtnHistory_Click" Style="{StaticResource TopNavButtonStyle}" Foreground="#000000"/>
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
 
                 <Button x:Name="BtnPremium" Content="⭐ PREMIUM" Click="BtnGoPremium_Click" Visibility="Collapsed"
-                        Background="#15FFA500" Foreground="Orange" FontWeight="Bold" FontSize="11" 
-                        Padding="12,5" BorderBrush="Orange" Margin="0,0,20,0" Cursor="Hand">
+                        Background="#FFF4D6" Foreground="#7A4B00" FontWeight="Bold" FontSize="11" 
+                        Padding="12,5" BorderBrush="#F0C15D" BorderThickness="1" Margin="0,0,20,0" Cursor="Hand">
                     <Button.Resources>
                         <Style TargetType="Border">
                             <Setter Property="CornerRadius" Value="12"/>
@@ -31,23 +69,23 @@
                 </Button>
 
                 <StackPanel x:Name="GuestPanel" Orientation="Horizontal" Visibility="Visible">
-                    <Button Content="LOGIN" Click="BtnLogin_Click" Background="#1c2030" Foreground="Cyan" FontWeight="Bold" Padding="20,8" BorderBrush="Cyan" BorderThickness="1" Cursor="Hand"/>
+                    <Button Content="LOGIN" Click="BtnLogin_Click" Background="#F4F6F8" Foreground="#000000" FontWeight="Bold" Padding="20,8" BorderBrush="#C9D1D8" BorderThickness="1" Cursor="Hand"/>
                 </StackPanel>
 
                 <StackPanel x:Name="UserPanel" Orientation="Horizontal" Visibility="Collapsed">
                     <Button Click="BtnProfile_Click" Background="Transparent" BorderThickness="0" Cursor="Hand">
                         <StackPanel Orientation="Horizontal">
                             <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
-                                <TextBlock x:Name="TxtUsername" Text="USUARIO" Foreground="Cyan" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right"/>
-                                <TextBlock Text="Online" Foreground="#00FF00" FontSize="9" HorizontalAlignment="Right"/>
+                                <TextBlock x:Name="TxtUsername" Text="USUARIO" Foreground="#0E2F33" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                <TextBlock Text="Online" Foreground="#2E7D32" FontSize="9" HorizontalAlignment="Right"/>
                             </StackPanel>
                             <Grid>
-                                <Ellipse Width="38" Height="38" Fill="#1c2030" Stroke="#3300FFFF" StrokeThickness="1"/>
-                                <TextBlock Text="👤" Foreground="Cyan" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16"/>
+                                <Ellipse Width="38" Height="38" Fill="#F4F6F8" Stroke="#C9D1D8" StrokeThickness="1"/>
+                                <TextBlock Text="👤" Foreground="#0E2F33" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16"/>
                             </Grid>
                         </StackPanel>
                     </Button>
-                    <Button Content="Salir" Click="BtnLogout_Click" Foreground="#FF5555" Background="Transparent" BorderThickness="0" Margin="15,0,0,0" FontSize="11" Cursor="Hand"/>
+                    <Button Content="Salir" Click="BtnLogout_Click" Foreground="#000000" Background="#F4F6F8" BorderBrush="#C9D1D8" BorderThickness="1" Margin="15,0,0,0" FontSize="11" FontWeight="SemiBold" Cursor="Hand" Padding="14,6"/>
                 </StackPanel>
             </StackPanel>
         </Grid>

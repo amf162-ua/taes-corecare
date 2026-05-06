@@ -8,6 +8,41 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <converters:InverseBoolConverter x:Key="InverseBool"/>
+
+        <Style x:Key="TopTabItemStyle" TargetType="TabItem">
+            <Setter Property="Foreground" Value="#1E2328"/>
+            <Setter Property="Background" Value="#F4F6F8"/>
+            <Setter Property="BorderBrush" Value="#C9D1D8"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8,8,0,0"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Foreground" Value="#1B1F24"/>
+                                <Setter Property="Background" Value="#E2E8EE"/>
+                                <Setter Property="BorderBrush" Value="#9EAAB6"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#E8EDF2"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid Background="#F5F5F7">
@@ -44,10 +79,21 @@
                 Grid.RowSpan="2"
                 Visibility="Collapsed"/>
 
-        <!-- Client View (Tabs) -->
+         <Frame x:Name="MainContentArea"
+             Grid.Row="1"
+             Visibility="Collapsed"/>
+
+         <!-- Client View (Tabs) -->
         <TabControl x:Name="ClientTabs"
                Grid.Row="1"
-               Margin="10">
+               Margin="10"
+             Background="#FBFCFD"
+               BorderBrush="#D4D1CA"
+               BorderThickness="1"
+               Padding="6">
+            <TabControl.Resources>
+                <Style TargetType="TabItem" BasedOn="{StaticResource TopTabItemStyle}"/>
+            </TabControl.Resources>
             <TabItem Header="Benchmark">
                 <Grid Margin="10">
                     <Grid.RowDefinitions>
@@ -70,7 +116,7 @@
                               SelectedItem="{Binding SelectedBenchmarkOption}"
                               DisplayMemberPath="Label"/>
 
-                    <Button Grid.Row="0" Grid.Column="3"
+                        <Button Grid.Row="0" Grid.Column="3"
                             Margin="0,0,10,0"
                             Padding="14,5"
                             Command="{Binding RunBenchmarkCommand}"
@@ -94,6 +140,166 @@
                              HorizontalScrollBarVisibility="Auto"
                              AcceptsReturn="True"
                              TextWrapping="NoWrap"/>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Soporte" Visibility="{Binding IsCliente, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid Margin="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="320"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Background="White" BorderBrush="#D4D1CA" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,10,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Soporte" FontSize="16" FontWeight="SemiBold" Foreground="#0E2F33"/>
+                                <Button Content="Nueva consulta"
+                                        Command="{Binding StartNewSupportChatCommand}"
+                                        Margin="12,0,0,0"
+                                        Padding="10,5"
+                                        Background="#01696f"
+                                        Foreground="White"/>
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="1"
+                                       Text="{Binding SupportChatStatus}"
+                                       Margin="0,10,0,10"
+                                       Foreground="#666"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"/>
+
+                            <ListBox Grid.Row="2"
+                                     ItemsSource="{Binding SupportChats}"
+                                     SelectedItem="{Binding SelectedSupportChat}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,0,10" Padding="12" CornerRadius="8" BorderBrush="#E3E0D9" BorderThickness="1" Background="White">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="{Binding Subject}" FontWeight="SemiBold" Foreground="#222" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding Preview}" Margin="0,4,0,0" Foreground="#666" FontSize="12" TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding CreatedAt, StringFormat=Abierto el {0:dd/MM/yyyy HH:mm}}" Margin="0,6,0,0" Foreground="#999" FontSize="11"/>
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
+                                                    <Border Background="#01696f" CornerRadius="10" Padding="8,2" HorizontalAlignment="Right"
+                                                            Visibility="{Binding HasPendingReply, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                        <TextBlock Text="Nuevo" Foreground="White" FontSize="10" FontWeight="Bold"/>
+                                                    </Border>
+                                                    <Border Margin="0,6,0,0" Background="#EEF4F4" CornerRadius="10" Padding="8,2" HorizontalAlignment="Right">
+                                                        <TextBlock Text="{Binding StatusLabel}" Foreground="#0E2F33" FontSize="10" FontWeight="SemiBold"/>
+                                                    </Border>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="1" Background="White" BorderBrush="#D4D1CA" BorderThickness="1" CornerRadius="8" Padding="14">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Grid.Row="0">
+                                <TextBlock Text="{Binding SupportChatStatus}" FontSize="14" FontWeight="SemiBold" Foreground="#0E2F33"/>
+                                <TextBlock Text="{Binding SelectedSupportChat.Subject}" Margin="0,4,0,0" Foreground="#666" FontSize="12"/>
+                            </StackPanel>
+
+                            <Grid Grid.Row="1" Margin="0,12,0,12">
+                                <Grid.Resources>
+                                    <Style TargetType="Border">
+                                        <Setter Property="CornerRadius" Value="10"/>
+                                    </Style>
+                                </Grid.Resources>
+
+                                <StackPanel Visibility="{Binding IsSupportConversationActive, Converter={StaticResource InverseBool}}"
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Center">
+                                    <TextBlock Text="Selecciona un chat o pulsa 'Nueva consulta' para empezar." Foreground="#888" FontSize="14" TextAlignment="Center" TextWrapping="Wrap" Width="280"/>
+                                </StackPanel>
+
+                                <ListBox ItemsSource="{Binding SelectedSupportChatMessages}"
+                                         BorderThickness="0"
+                                         Background="Transparent"
+                                         Visibility="{Binding IsSupportConversationActive, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                         ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="0,0,0,10" Padding="12" Background="#F7F7F7">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="HorizontalAlignment" Value="Left"/>
+                                                        <Setter Property="Background" Value="#F0F0F0"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsMine}" Value="True">
+                                                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                                                <Setter Property="Background" Value="#D9F0EE"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+
+                                                <StackPanel MaxWidth="460">
+                                                    <TextBlock Text="{Binding SenderName}" FontSize="11" FontWeight="Bold" Foreground="#0E2F33"/>
+                                                    <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Margin="0,4,0,0" Foreground="#222"/>
+                                                    <TextBlock Text="{Binding SentAt, StringFormat={}{0:dd/MM/yyyy HH:mm}}" Margin="0,4,0,0" Foreground="#777" FontSize="10" HorizontalAlignment="Right"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Grid>
+
+                            <Grid Grid.Row="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Background="#FAFAFA" BorderBrush="#D4D1CA" BorderThickness="1" CornerRadius="8" Margin="0,0,10,0">
+                                    <TextBox Text="{Binding NewSupportQuestion, UpdateSourceTrigger=PropertyChanged}"
+                                             Padding="10"
+                                             BorderThickness="0"
+                                             Background="Transparent"
+                                             AcceptsReturn="True"
+                                             Height="90"
+                                             TextWrapping="Wrap"
+                                             VerticalScrollBarVisibility="Auto"
+                                             IsEnabled="{Binding CanEditSupportMessage}"/>
+                                </Border>
+
+                                <Button Grid.Column="1"
+                                        Content="{Binding SupportActionLabel}"
+                                        Command="{Binding SendSupportMessageCommand}"
+                                        IsEnabled="{Binding CanSendSupportMessage}"
+                                        Padding="18,12"
+                                        Background="#01696f"
+                                        Foreground="White"
+                                        VerticalAlignment="Bottom"/>
+                            </Grid>
+                        </Grid>
+                    </Border>
                 </Grid>
             </TabItem>
 

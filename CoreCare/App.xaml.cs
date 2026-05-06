@@ -23,11 +23,6 @@ namespace CoreCare
             base.OnStartup(e);
 
             try
-            // Aceptar licencia comunitaria y gratuita de QuestPDF globalmente en toda la aplicación
-            QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
-
-            // Asegurarse de que la base de datos se crea al iniciar la aplicación
-            using (var db = new CoreCareDbContext())
             {
                 LogStartup("OnStartup entered");
 
@@ -38,6 +33,7 @@ namespace CoreCare
                     LogStartup("EnsureCreated completed");
 
                     EnsureUsersRoleColumn(db);
+                    EnsureChatTables(db);
                     LogTableInfo(db);
 
                     // Ensure admin user exists (non-destructive). Also ensure a demo client exists if missing.
@@ -120,6 +116,46 @@ namespace CoreCare
             }
 
             LogStartup("Role column added with direct SQL bootstrap");
+        }
+
+        private static void EnsureChatTables(CoreCareDbContext db)
+        {
+            var connection = db.Database.GetDbConnection();
+            if (connection.State != System.Data.ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+CREATE TABLE IF NOT EXISTS Chats (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ClientId INTEGER NOT NULL,
+    Subject TEXT NOT NULL,
+    Status TEXT NOT NULL DEFAULT 'Abierto',
+    CreatedAt TEXT NOT NULL,
+    ClosedAt TEXT NULL,
+    FOREIGN KEY (ClientId) REFERENCES Users (Id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS ChatMessages (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ChatId INTEGER NOT NULL,
+    SenderId INTEGER NOT NULL,
+    Message TEXT NOT NULL,
+    SentAt TEXT NOT NULL,
+    FOREIGN KEY (ChatId) REFERENCES Chats (Id) ON DELETE CASCADE,
+    FOREIGN KEY (SenderId) REFERENCES Users (Id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS IX_Chats_ClientId ON Chats (ClientId);
+CREATE INDEX IF NOT EXISTS IX_ChatMessages_ChatId ON ChatMessages (ChatId);
+CREATE INDEX IF NOT EXISTS IX_ChatMessages_SenderId ON ChatMessages (SenderId);";
+                command.ExecuteNonQuery();
+            }
+
+            LogStartup("Chat tables ensured with direct SQL bootstrap");
         }
 
         private static void LogStartup(string message)

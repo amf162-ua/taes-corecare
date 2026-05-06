@@ -42,9 +42,42 @@ namespace CoreCare.ViewModels
         public DateTime SentAt { get; set; }
     }
 
+    public partial class UserItemViewModel : ObservableObject
+    {
+        private readonly User _user;
+
+        public int Id => _user.Id;
+        public string Name => _user.name;
+        public string Username => _user.username;
+        public string Email => _user.email;
+
+        [ObservableProperty]
+        private UserRole _role;
+
+        [ObservableProperty]
+        private TipoPlan _plan;
+
+        [ObservableProperty]
+        private bool _isActive;
+
+        public DateTime CreatedAt => _user.createdAt;
+
+        public UserItemViewModel(User user)
+        {
+            _user = user;
+            _role = user.Role;
+            _plan = user.Plan;
+            _isActive = user.IsActive;
+        }
+
+        public User GetUser() => _user;
+    }
+
     public partial class AdminPanelViewModel : ObservableObject
     {
         private readonly DispatcherTimer _refreshTimer;
+        private int? _selectedChatId;
+        private bool _isRefreshingChats;
 
         [ObservableProperty]
         private string _adminUserLabel = "Usuario: -";
@@ -56,6 +89,9 @@ namespace CoreCare.ViewModels
         private ChatItemViewModel? _selectedChat;
 
         [ObservableProperty]
+        private bool _isDetailPaneOpen = false;
+
+        [ObservableProperty]
         private ObservableCollection<ChatMessageViewModel> _selectedChatMessages = new();
 
         [ObservableProperty]
@@ -64,10 +100,29 @@ namespace CoreCare.ViewModels
         [ObservableProperty]
         private int _pendingChatsCount = 0;
 
+        // User Management Properties
+        [ObservableProperty]
+        private ObservableCollection<UserItemViewModel> _allUsers = new();
+
+        [ObservableProperty]
+        private ObservableCollection<UserItemViewModel> _filteredUsers = new();
+
+        [ObservableProperty]
+        private string _userSearchText = string.Empty;
+
+        [ObservableProperty]
+        private UserRole? _roleFilter = null;
+
+        [ObservableProperty]
+        private UserItemViewModel? _selectedUser;
+
+        public bool HasActiveChat => _selectedChatId.HasValue;
+
         public AdminPanelViewModel()
         {
             UpdateAdminLabel();
             LoadOpenChats();
+            LoadAllUsers();
 
             // Setup polling for new messages (~3 seconds)
             _refreshTimer = new DispatcherTimer();
@@ -116,6 +171,17 @@ namespace CoreCare.ViewModels
                 }
 
                 PendingChatsCount = openChats.Count;
+
+                if (_selectedChatId.HasValue)
+                {
+                    SelectedChat = OpenChats.FirstOrDefault(chat => chat.Id == _selectedChatId.Value);
+                    if (SelectedChat != null)
+                    {
+                        LoadSelectedChatMessages();
+                    }
+                }
+
+                OnPropertyChanged(nameof(HasActiveChat));
             }
             catch (Exception ex)
             {
@@ -125,25 +191,48 @@ namespace CoreCare.ViewModels
 
         private void RefreshChats()
         {
-            LoadOpenChats();
-            
-            // If a chat is selected, refresh its messages
             if (SelectedChat != null)
             {
-                LoadSelectedChatMessages();
+                _selectedChatId = SelectedChat.Id;
+            }
+
+            _isRefreshingChats = true;
+            try
+            {
+                LoadOpenChats();
+
+                // If a chat is selected, refresh its messages
+                if (SelectedChat != null)
+                {
+                    LoadSelectedChatMessages();
+                }
+            }
+            finally
+            {
+                _isRefreshingChats = false;
             }
         }
 
         partial void OnSelectedChatChanged(ChatItemViewModel? value)
         {
+            if (value == null && _isRefreshingChats && _selectedChatId.HasValue)
+            {
+                return;
+            }
+
+            _selectedChatId = value?.Id;
+            OnPropertyChanged(nameof(HasActiveChat));
+
             if (value != null)
             {
+                IsDetailPaneOpen = true;
                 LoadSelectedChatMessages();
                 // Mark as read
                 value.HasUnreadMessages = false;
             }
             else
             {
+                IsDetailPaneOpen = false;
                 SelectedChatMessages.Clear();
                 NewMessageText = string.Empty;
             }
@@ -250,6 +339,139 @@ namespace CoreCare.ViewModels
             {
                 System.Diagnostics.Debug.WriteLine($"Error closing chat: {ex.Message}");
             }
+        }
+
+        // ===== USER MANAGEMENT =====
+
+        private void LoadAllUsers()
+        {
+            try
+            {
+                using var db = new CoreCareDbContext();
+                var users = db.Users.OrderBy(u => u.username).ToList();
+
+                AllUsers.Clear();
+                foreach (var user in users)
+                {
+                    AllUsers.Add(new UserItemViewModel(user));
+                }
+
+                ApplyUserFilters();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading users: {ex.Message}");
+            }
+        }
+
+        partial void OnUserSearchTextChanged(string value)
+        {
+            ApplyUserFilters();
+        }
+
+        partial void OnRoleFilterChanged(UserRole? value)
+        {
+            ApplyUserFilters();
+        }
+
+        private void ApplyUserFilters()
+        {
+            var filtered = AllUsers.AsEnumerable();
+
+            // Filter by username or email
+            if (!string.IsNullOrWhiteSpace(UserSearchText))
+            {
+                var search = UserSearchText.ToLower();
+                filtered = filtered.Where(u => 
+                    u.Username.ToLower().Contains(search) || 
+                    u.Email.ToLower().Contains(search) ||
+                    u.Name.ToLower().Contains(search));
+            }
+
+            // Filter by role
+            if (RoleFilter.HasValue)
+            {
+                filtered = filtered.Where(u => u.Role == RoleFilter.Value);
+            }
+
+            FilteredUsers.Clear();
+            foreach (var user in filtered)
+            {
+                FilteredUsers.Add(user);
+            }
+        }
+
+        [RelayCommand]
+        private void DeleteUser(UserItemViewModel? user)
+        {
+            if (user == null) return;
+
+            try
+            {
+                using var db = new CoreCareDbContext();
+                var dbUser = db.Users.FirstOrDefault(u => u.Id == user.Id);
+                if (dbUser != null)
+                {
+                    db.Users.Remove(dbUser);
+                    db.SaveChanges();
+                    LoadAllUsers();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error deleting user: {ex.Message}");
+            }
+        }
+
+        [RelayCommand]
+        private void ToggleUserRole(UserItemViewModel? user)
+        {
+            if (user == null) return;
+
+            try
+            {
+                using var db = new CoreCareDbContext();
+                var dbUser = db.Users.FirstOrDefault(u => u.Id == user.Id);
+                if (dbUser != null)
+                {
+                    dbUser.Role = dbUser.Role == UserRole.Cliente ? UserRole.Administrador : UserRole.Cliente;
+                    db.SaveChanges();
+                    user.Role = dbUser.Role;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error toggling user role: {ex.Message}");
+            }
+        }
+
+        [RelayCommand]
+        private void ToggleUserPlan(UserItemViewModel? user)
+        {
+            if (user == null) return;
+
+            try
+            {
+                using var db = new CoreCareDbContext();
+                var dbUser = db.Users.FirstOrDefault(u => u.Id == user.Id);
+                if (dbUser != null)
+                {
+                    dbUser.Plan = dbUser.Plan == TipoPlan.Basico ? TipoPlan.Premium : TipoPlan.Basico;
+                    db.SaveChanges();
+                    user.Plan = dbUser.Plan;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error toggling user plan: {ex.Message}");
+            }
+        }
+
+        [RelayCommand]
+        private void ClearUserFilters()
+        {
+            UserSearchText = string.Empty;
+            RoleFilter = null;
         }
     }
 }

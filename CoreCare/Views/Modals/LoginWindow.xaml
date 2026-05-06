@@ -6,23 +6,55 @@
         WindowStartupLocation="CenterOwner">
 
     <Window.Resources>
-        <Style x:Key="CyberButton" TargetType="Button">
-            <Setter Property="Background" Value="#00FFFF"/> <Setter Property="Foreground" Value="#000000"/> <Setter Property="FontWeight" Value="ExtraBold"/>
+        <Style x:Key="LightActionButton" TargetType="Button">
+            <Setter Property="Background" Value="#F4F6F8"/>
+            <Setter Property="Foreground" Value="#1B1F24"/>
+            <Setter Property="BorderBrush" Value="#C9D1D8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontWeight" Value="ExtraBold"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="Padding" Value="10"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" 
-                                Background="{TemplateBinding Background}" 
-                                CornerRadius="4" 
-                                BorderBrush="#00FFFF" 
-                                BorderThickness="1">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#80FFFF"/> <Setter Property="Cursor" Value="Hand"/>
+                                <Setter TargetName="border" Property="Background" Value="#E8EDF2"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="LightLoginTab" TargetType="TabItem">
+            <Setter Property="Foreground" Value="#1B1F24"/>
+            <Setter Property="Background" Value="#F4F6F8"/>
+            <Setter Property="BorderBrush" Value="#C9D1D8"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8,8,0,0"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#E2E8EE"/>
+                                <Setter Property="Foreground" Value="#1B1F24"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -31,7 +63,7 @@
         </Style>
     </Window.Resources>
 
-    <Border Background="#151929" CornerRadius="12" BorderBrush="#00FFFF" BorderThickness="2">
+    <Border Background="#F8FAFC" CornerRadius="12" BorderBrush="#D4D1CA" BorderThickness="2">
         <Grid Margin="25">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/> 
@@ -45,34 +77,34 @@
             </StackPanel>
 
             <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0">
-                <TabItem Header="ACCESO">
+                <TabItem Header="ACCESO" Style="{StaticResource LightLoginTab}">
                     <StackPanel Margin="0,20,0,0">
-                        <TextBlock Text="USUARIO / EMAIL" Foreground="#9CA3AF" FontSize="11" FontWeight="Bold" Margin="0,0,0,5"/>
-                        <TextBox x:Name="TxtLoginEmail" Background="#0D1117" Foreground="White" BorderBrush="#3300FFFF" Padding="10" Margin="0,0,0,15"/>
+                        <TextBlock Text="USUARIO / EMAIL" Foreground="#4B5563" FontSize="11" FontWeight="Bold" Margin="0,0,0,5"/>
+                        <TextBox x:Name="TxtLoginEmail" Background="#FFFFFF" Foreground="#1B1F24" BorderBrush="#C9D1D8" Padding="10" Margin="0,0,0,15"/>
                         
-                        <TextBlock Text="CONTRASEÑA" Foreground="#9CA3AF" FontSize="11" FontWeight="Bold" Margin="0,0,0,5"/>
-                        <PasswordBox x:Name="TxtLoginPassword" Background="#0D1117" Foreground="White" BorderBrush="#3300FFFF" Padding="10" Margin="0,0,0,25"/>
+                        <TextBlock Text="CONTRASEÑA" Foreground="#4B5563" FontSize="11" FontWeight="Bold" Margin="0,0,0,5"/>
+                        <PasswordBox x:Name="TxtLoginPassword" Background="#FFFFFF" Foreground="#1B1F24" BorderBrush="#C9D1D8" Padding="10" Margin="0,0,0,25"/>
 
-                        <Button Content="INICIAR SESIÓN" Style="{StaticResource CyberButton}" Height="45" Click="BtnLogin_Click"/>
+                        <Button Content="INICIAR SESIÓN" Style="{StaticResource LightActionButton}" Height="45" Click="BtnLogin_Click"/>
                     </StackPanel>
                 </TabItem>
                 
-                <TabItem Header="REGISTRO" Margin="184,2,-188,-6" RenderTransformOrigin="-0.289,2.107">
+                <TabItem Header="REGISTRO" Style="{StaticResource LightLoginTab}">
                     <StackPanel Margin="0,20,0,0">
-                        <TextBlock Text="NOMBRE COMPLETO" Foreground="#9CA3AF" FontSize="11" FontWeight="Bold" Margin="0,0,0,5"/>
-                        <TextBox Background="#0D1117" Foreground="White" BorderBrush="#3300FFFF" Padding="10" Margin="0,0,0,10"/>
+                        <TextBlock Text="NOMBRE COMPLETO" Foreground="#4B5563" FontSize="11" FontWeight="Bold" Margin="0,0,0,5"/>
+                        <TextBox Background="#FFFFFF" Foreground="#1B1F24" BorderBrush="#C9D1D8" Padding="10" Margin="0,0,0,10"/>
                         
-                        <TextBlock Text="EMAIL" Foreground="#9CA3AF" FontSize="11" FontWeight="Bold" Margin="0,0,0,5"/>
-                        <TextBox Background="#0D1117" Foreground="White" BorderBrush="#3300FFFF" Padding="10" Margin="0,0,0,10"/>
+                        <TextBlock Text="EMAIL" Foreground="#4B5563" FontSize="11" FontWeight="Bold" Margin="0,0,0,5"/>
+                        <TextBox Background="#FFFFFF" Foreground="#1B1F24" BorderBrush="#C9D1D8" Padding="10" Margin="0,0,0,10"/>
 
-                        <Button Content="CREAR CUENTA" Style="{StaticResource CyberButton}" Height="45" Margin="0,15,0,0"/>
+                        <Button Content="CREAR CUENTA" Style="{StaticResource LightActionButton}" Height="45" Margin="0,15,0,0"/>
                     </StackPanel>
                 </TabItem>
             </TabControl>
 
             <Button Grid.Row="2" Content="CANCELAR" Click="BtnClose_Click" 
-                    Background="Transparent" Foreground="#6B7280" BorderThickness="0" 
-                    FontSize="12" Margin="0,15,0,0" Cursor="Hand"/>
+                    Background="#F4F6F8" Foreground="#1B1F24" BorderBrush="#C9D1D8" BorderThickness="1" 
+                    FontSize="12" Margin="0,15,0,0" Cursor="Hand" Padding="12,6"/>
         </Grid>
     </Border>
 </Window>

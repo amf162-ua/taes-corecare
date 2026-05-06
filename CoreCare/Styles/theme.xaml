@@ -29,20 +29,19 @@
 
 	<Style TargetType="TextBlock">
 		<Setter Property="FontFamily" Value="{StaticResource FontBody}" />
-		<Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
 		<Setter Property="FontSize" Value="16" />
 	</Style>
 
 	<Style x:Key="HeaderTextBlockStyle" TargetType="TextBlock">
 		<Setter Property="FontFamily" Value="{StaticResource FontHeading}" />
-		<Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
+		<Setter Property="Foreground" Value="#030213" />
 		<Setter Property="FontWeight" Value="Medium" />
 	</Style>
 
 	<Style TargetType="Button">
 		<Setter Property="FontFamily" Value="{StaticResource FontHeading}" />
-		<Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
-		<Setter Property="Foreground" Value="{StaticResource PrimaryForegroundBrush}" />
+		<Setter Property="Background" Value="{StaticResource SecondaryBrush}" />
+		<Setter Property="Foreground" Value="{StaticResource SecondaryForegroundBrush}" />
 		<Setter Property="FontSize" Value="16" />
 		<Setter Property="Padding" Value="16,8" />
 		<Setter Property="BorderThickness" Value="0" />
@@ -50,9 +49,21 @@
 			<Setter.Value>
 				<ControlTemplate TargetType="Button">
 					<Border Background="{TemplateBinding Background}"
-                            CornerRadius="10">
-						<ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+						CornerRadius="10"
+						BorderBrush="{StaticResource InputBorderBrush}"
+						BorderThickness="1">
+						<ContentPresenter HorizontalAlignment="Center"
+									  VerticalAlignment="Center"
+									  TextElement.Foreground="{TemplateBinding Foreground}"/>
 					</Border>
+					<ControlTemplate.Triggers>
+						<Trigger Property="IsMouseOver" Value="True">
+							<Setter Property="Background" Value="{StaticResource MutedBrush}" />
+						</Trigger>
+						<Trigger Property="IsPressed" Value="True">
+							<Setter Property="Background" Value="{StaticResource AccentBrush}" />
+						</Trigger>
+					</ControlTemplate.Triggers>
 				</ControlTemplate>
 			</Setter.Value>
 		</Setter>

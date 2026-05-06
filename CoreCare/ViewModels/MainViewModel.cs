@@ -14,6 +14,7 @@ using CommunityToolkit.Mvvm.Input;
 using System.Windows;
 using QuestPDF.Fluent;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using System.Windows.Media;
 using System.Text;
 
@@ -27,6 +28,7 @@ namespace CoreCare.ViewModels
         private readonly SystemSpecsService _systemSpecsService;
         private readonly HardwareUpgradeAdvisorService _upgradeAdvisorService;
         private readonly DispatcherTimer _refreshTimer;
+        private readonly DispatcherTimer _supportRefreshTimer;
 
         [ObservableProperty]
         private string _cpuDisplay = "N/A";
@@ -45,6 +47,24 @@ namespace CoreCare.ViewModels
 
         [ObservableProperty]
         private string _historyUserLabel = "Usuario: -";
+
+        [ObservableProperty]
+        private ObservableCollection<SupportChatItemViewModel> _supportChats = new();
+
+        [ObservableProperty]
+        private SupportChatItemViewModel? _selectedSupportChat;
+
+        [ObservableProperty]
+        private ObservableCollection<SupportChatMessageViewModel> _selectedSupportChatMessages = new();
+
+        [ObservableProperty]
+        private string _newSupportQuestion = string.Empty;
+
+        [ObservableProperty]
+        private string _supportChatStatus = "Selecciona un chat o inicia una nueva consulta.";
+
+        [ObservableProperty]
+        private bool _isCreatingSupportChat;
 
         public bool IsAuthenticated => SessionService.CurrentUser != null;
 
@@ -154,6 +174,57 @@ namespace CoreCare.ViewModels
 
             UpdateAllData();
             LoadHistory();
+
+            _supportRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            _supportRefreshTimer.Tick += (_, _) => RefreshSupportChats();
+            _supportRefreshTimer.Start();
+
+            LoadSupportChats();
+        }
+
+        public bool IsSupportConversationActive => IsCreatingSupportChat || SelectedSupportChat != null;
+
+        public bool CanEditSupportMessage => IsCreatingSupportChat || SelectedSupportChat?.IsOpen == true;
+
+        public bool CanSendSupportMessage => CanEditSupportMessage && !string.IsNullOrWhiteSpace(NewSupportQuestion);
+
+        public string SupportActionLabel => IsCreatingSupportChat || SelectedSupportChat == null ? "Enviar pregunta" : "Responder";
+
+        partial void OnSelectedSupportChatChanged(SupportChatItemViewModel? value)
+        {
+            if (value != null)
+            {
+                IsCreatingSupportChat = false;
+                SupportChatStatus = value.IsOpen
+                    ? $"Chat abierto desde {value.CreatedAt:yyyy-MM-dd HH:mm}."
+                    : $"Chat cerrado desde {value.CreatedAt:yyyy-MM-dd HH:mm}.";
+                LoadSelectedSupportChatMessages();
+            }
+
+            OnPropertyChanged(nameof(IsSupportConversationActive));
+            OnPropertyChanged(nameof(CanEditSupportMessage));
+            OnPropertyChanged(nameof(CanSendSupportMessage));
+            OnPropertyChanged(nameof(SupportActionLabel));
+        }
+
+        partial void OnIsCreatingSupportChatChanged(bool value)
+        {
+            if (value)
+            {
+                SelectedSupportChat = null;
+                SelectedSupportChatMessages.Clear();
+                SupportChatStatus = "Escribe tu consulta y envíala para abrir un chat nuevo.";
+            }
+
+            OnPropertyChanged(nameof(IsSupportConversationActive));
+            OnPropertyChanged(nameof(CanEditSupportMessage));
+            OnPropertyChanged(nameof(CanSendSupportMessage));
+            OnPropertyChanged(nameof(SupportActionLabel));
+        }
+
+        partial void OnNewSupportQuestionChanged(string value)
+        {
+            OnPropertyChanged(nameof(CanSendSupportMessage));
         }
 
         private void UpdateAllData()
@@ -585,6 +656,237 @@ namespace CoreCare.ViewModels
             };
 
             detailsWindow.ShowDialog();
+        }
+
+        [RelayCommand]
+        private void StartNewSupportChat()
+        {
+            IsCreatingSupportChat = true;
+            NewSupportQuestion = string.Empty;
+            SupportChatStatus = "Escribe tu consulta y pulsa Enviar pregunta.";
+        }
+
+        [RelayCommand]
+        private void SendSupportMessage()
+        {
+            if (SessionService.CurrentUser == null || !CanSendSupportMessage)
+            {
+                return;
+            }
+
+            var question = NewSupportQuestion.Trim();
+            if (string.IsNullOrWhiteSpace(question))
+            {
+                return;
+            }
+
+            try
+            {
+                using var db = new CoreCareDbContext();
+                var currentUser = SessionService.CurrentUser;
+                Chat chat;
+
+                if (IsCreatingSupportChat || SelectedSupportChat == null)
+                {
+                    chat = new Chat
+                    {
+                        ClientId = currentUser!.Id,
+                        Subject = BuildSupportChatSubject(question),
+                        Status = ChatStatus.Abierto,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    db.Chats.Add(chat);
+                    db.SaveChanges();
+
+                    SelectedSupportChat = new SupportChatItemViewModel
+                    {
+                        Id = chat.Id,
+                        Subject = chat.Subject,
+                        Preview = question,
+                        StatusLabel = "Abierto",
+                        IsOpen = true,
+                        HasPendingReply = false,
+                        CreatedAt = chat.CreatedAt,
+                        LastMessageAt = chat.CreatedAt
+                    };
+                }
+                else
+                {
+                    chat = db.Chats.FirstOrDefault(c => c.Id == SelectedSupportChat.Id && c.ClientId == currentUser!.Id)
+                           ?? throw new InvalidOperationException("No se pudo localizar el chat seleccionado.");
+
+                    if (chat.Status != ChatStatus.Abierto)
+                    {
+                        SupportChatStatus = "Este chat ya está cerrado. Abre una nueva consulta para continuar.";
+                        return;
+                    }
+                }
+
+                db.ChatMessages.Add(new ChatMessage
+                {
+                    ChatId = chat.Id,
+                    SenderId = currentUser!.Id,
+                    Message = question,
+                    SentAt = DateTime.UtcNow
+                });
+                db.SaveChanges();
+
+                IsCreatingSupportChat = false;
+                NewSupportQuestion = string.Empty;
+
+                LoadSupportChats();
+                SelectedSupportChat = SupportChats.FirstOrDefault(chatItem => chatItem.Id == chat.Id) ?? SelectedSupportChat;
+                LoadSelectedSupportChatMessages();
+                SupportChatStatus = $"Consulta enviada en el chat #{chat.Id}.";
+            }
+            catch (Exception ex)
+            {
+                SupportChatStatus = $"No se pudo enviar la consulta: {ex.GetBaseException().Message}";
+            }
+        }
+
+        private void RefreshSupportChats()
+        {
+            if (!IsAuthenticated || SessionService.CurrentUser == null)
+            {
+                return;
+            }
+
+            var selectedId = SelectedSupportChat?.Id;
+            var wasCreating = IsCreatingSupportChat;
+            LoadSupportChats();
+
+            if (selectedId.HasValue)
+            {
+                SelectedSupportChat = SupportChats.FirstOrDefault(chat => chat.Id == selectedId.Value);
+                if (SelectedSupportChat != null)
+                {
+                    LoadSelectedSupportChatMessages();
+                }
+            }
+            else if (wasCreating)
+            {
+                IsCreatingSupportChat = true;
+            }
+        }
+
+        private void LoadSupportChats()
+        {
+            try
+            {
+                using var db = new CoreCareDbContext();
+                var currentUser = SessionService.CurrentUser;
+
+                SupportChats.Clear();
+
+                if (currentUser == null)
+                {
+                    return;
+                }
+
+                var chats = db.Chats
+                    .Include(chat => chat.Messages)
+                        .ThenInclude(message => message.Sender)
+                    .Where(chat => chat.ClientId == currentUser.Id)
+                    .OrderByDescending(chat => chat.CreatedAt)
+                    .ToList();
+
+                foreach (var chat in chats)
+                {
+                    var orderedMessages = chat.Messages.OrderBy(message => message.SentAt).ToList();
+                    var lastMessage = orderedMessages.LastOrDefault();
+                    var preview = lastMessage?.Message ?? "Sin mensajes todavía.";
+                    if (preview.Length > 60)
+                    {
+                        preview = preview[..60] + "...";
+                    }
+
+                    var hasPendingReply = chat.Status == ChatStatus.Abierto
+                        && lastMessage != null
+                        && lastMessage.SenderId != currentUser.Id;
+
+                    SupportChats.Add(new SupportChatItemViewModel
+                    {
+                        Id = chat.Id,
+                        Subject = string.IsNullOrWhiteSpace(chat.Subject) ? $"Consulta #{chat.Id}" : chat.Subject,
+                        Preview = preview,
+                        StatusLabel = chat.Status == ChatStatus.Abierto ? "Abierto" : "Cerrado",
+                        IsOpen = chat.Status == ChatStatus.Abierto,
+                        HasPendingReply = hasPendingReply,
+                        CreatedAt = chat.CreatedAt,
+                        LastMessageAt = lastMessage?.SentAt
+                    });
+                }
+
+                if (SelectedSupportChat != null)
+                {
+                    SelectedSupportChat = SupportChats.FirstOrDefault(chat => chat.Id == SelectedSupportChat.Id) ?? SelectedSupportChat;
+                }
+
+                if (SupportChats.Count == 0)
+                {
+                    SupportChatStatus = "Todavía no has abierto chats de soporte.";
+                }
+            }
+            catch (Exception ex)
+            {
+                SupportChatStatus = $"No se pudieron cargar los chats: {ex.GetBaseException().Message}";
+            }
+        }
+
+        private void LoadSelectedSupportChatMessages()
+        {
+            if (SessionService.CurrentUser == null || SelectedSupportChat == null)
+            {
+                SelectedSupportChatMessages.Clear();
+                return;
+            }
+
+            try
+            {
+                using var db = new CoreCareDbContext();
+
+                var chat = db.Chats
+                    .Include(c => c.Messages)
+                        .ThenInclude(m => m.Sender)
+                    .FirstOrDefault(c => c.Id == SelectedSupportChat.Id && c.ClientId == SessionService.CurrentUser.Id);
+
+                SelectedSupportChatMessages.Clear();
+
+                if (chat == null)
+                {
+                    return;
+                }
+
+                foreach (var message in chat.Messages.OrderBy(message => message.SentAt))
+                {
+                    SelectedSupportChatMessages.Add(new SupportChatMessageViewModel
+                    {
+                        SenderName = message.SenderId == SessionService.CurrentUser.Id
+                            ? "Tú"
+                            : message.Sender?.username ?? message.Sender?.name ?? "Administrador",
+                        Message = message.Message,
+                        SentAt = message.SentAt,
+                        IsMine = message.SenderId == SessionService.CurrentUser.Id
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                SupportChatStatus = $"No se pudo abrir el chat: {ex.GetBaseException().Message}";
+            }
+        }
+
+        private static string BuildSupportChatSubject(string question)
+        {
+            var subject = question.Trim();
+            if (subject.Length > 60)
+            {
+                subject = subject[..60] + "...";
+            }
+
+            return subject;
         }
 
         private static string BuildTrendStatus(IReadOnlyList<BenchmarkTrendPoint> trend)

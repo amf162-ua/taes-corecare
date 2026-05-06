@@ -39,5 +39,32 @@ namespace CoreCare.Views
             // Close the main window
             Window.GetWindow(this)?.Close();
         }
+
+        private void RefreshUsers_Click(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is AdminPanelViewModel vm)
+            {
+                // Reload all users (LoadAllUsers is private, so we'll refresh by clearing filters)
+                vm.ClearUserFiltersCommand.Execute(null);
+            }
+        }
+
+        private void RoleFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (DataContext is AdminPanelViewModel vm && sender is ComboBox cb)
+            {
+                var selectedItem = cb.SelectedItem as ComboBoxItem;
+                if (selectedItem != null)
+                {
+                    var role = selectedItem.Content?.ToString();
+                    vm.RoleFilter = role switch
+                    {
+                        "Cliente" => Models.UserRole.Cliente,
+                        "Administrador" => Models.UserRole.Administrador,
+                        _ => null
+                    };
+                }
+            }
+        }
     }
 }
