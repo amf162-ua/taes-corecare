@@ -1,0 +1,36 @@
+﻿<Page x:Class="CoreCare.Views.Pages.MainDashboardPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:components="clr-namespace:CoreCare.Views.Components"
+      Title="MainDashboardPage" Background="#0a0e1a">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <components:Header Grid.Row="0"/>
+
+        <Grid Grid.Row="1" Margin="20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="7*"/>
+                <ColumnDefinition Width="3*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Margin="0,0,20,0">
+                <components:ProcessManager/>
+            </Border>
+
+            <Border Grid.Column="1" VerticalAlignment="Top">
+                <components:NotificationPanel/>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2" BorderBrush="#3300FFFF" BorderThickness="0,1,0,0" Padding="10" Background="#151a2e">
+            <TextBlock Text="© 2026 AXIOM WORKS. TODOS LOS DERECHOS RESERVADOS." 
+                       Foreground="Gray" HorizontalAlignment="Center" FontSize="11"/>
+        </Border>
+    </Grid>
+</Page>

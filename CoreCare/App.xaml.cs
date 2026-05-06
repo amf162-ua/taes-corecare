@@ -27,6 +27,14 @@ namespace CoreCare
                 db.Database.EnsureCreated();
             }
         }
-    }
 
+    }
+    public partial class App : Application
+    {
+        public static bool IsUserLoggedIn { get; set; } = false;
+        public static string CurrentUsername { get; set; } = "Invitado";
+
+        // 👇 NUEVO: Estado inicial NO PREMIUM
+        public static bool IsPremium { get; set; } = false;
+    }
 }
