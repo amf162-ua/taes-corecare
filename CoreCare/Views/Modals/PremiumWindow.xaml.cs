@@ -39,9 +39,7 @@ namespace CoreCare.Views.Modals
 
         private void BtnUpgrade_Click(object sender, RoutedEventArgs e)
         {
-            // Aquí cerramos la ventana devolviendo 'true' 
-            // para que la ventana que llamó a esta abra el Modal de Pago
-            this.DialogResult = true;
+            this.DialogResult = true; // Esto es lo que activa el siguiente paso
             this.Close();
         }
     }

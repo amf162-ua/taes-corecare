@@ -12,6 +12,7 @@ namespace CoreCare.Orchestrators
     {
         private readonly HardwareMonitorService _monitor;
         private readonly Models.StressWorker _stressWorker;
+        private readonly TelemetryValidationService _telemetryValidation = new();
 
         public BenchmarkOrchestrator(HardwareMonitorService monitor, Models.StressWorker stressWorker)
         {
@@ -35,13 +36,36 @@ namespace CoreCare.Orchestrators
             var diskReads = new List<float>();
             var diskWrites = new List<float>();
 
-            static void AddReading(
+            void AddUnavailableReading(
+                List<SensorReading> bucket,
+                ComponentType component,
+                SensorType type,
+                string name,
+                string reason)
+            {
+                bucket.Add(new SensorReading
+                {
+                    Component = component,
+                    Type = type,
+                    Name = $"{name} - NO DISPONIBLE ({reason})",
+                    Value = 0,
+                    TimeStamp = DateTime.Now
+                });
+            }
+
+            bool AddReading(
                 List<SensorReading> bucket,
                 ComponentType component,
                 SensorType type,
                 string name,
                 float value)
             {
+                if (!_telemetryValidation.TryValidate(component, type, name, value, out var validationError))
+                {
+                    AddUnavailableReading(bucket, component, type, name, validationError);
+                    return false;
+                }
+
                 bucket.Add(new SensorReading
                 {
                     Component = component,
@@ -50,6 +74,8 @@ namespace CoreCare.Orchestrators
                     Value = value,
                     TimeStamp = DateTime.Now
                 });
+
+                return true;
             }
 
             // Baseline: 3 lecturas en reposo
@@ -61,58 +87,104 @@ namespace CoreCare.Orchestrators
 
                     if (options.ScanCPU)
                     {
-                        try
+                        if (_monitor.TryGetCpuTemperature(out var cpuTempData, out var cpuTempReason))
                         {
-                            var cpuTempData = _monitor.GetCpuTemperature();
-                            var cpuLoad = _monitor.GetCpuLoad();
-                            var cpuClock = _monitor.GetCpuClockGHz();
-
-                            AddReading(result.BaselineReadings, ComponentType.Cpu, SensorType.Temperature, "CPU Temp", cpuTempData.Value);
-                            AddReading(result.BaselineReadings, ComponentType.Cpu, SensorType.Load, "CPU Load", cpuLoad);
-                            AddReading(result.BaselineReadings, ComponentType.Cpu, SensorType.Clock, "CPU Clock", cpuClock);
+                            AddReading(result.BaselineReadings, ComponentType.Cpu, SensorType.Temperature, "CPU Temp C", cpuTempData.Value);
                         }
-                        catch { /* CPU data unavailable, continue */ }
+                        else
+                        {
+                            AddUnavailableReading(result.BaselineReadings, ComponentType.Cpu, SensorType.Temperature, "CPU Temp C", cpuTempReason);
+                        }
+
+                        if (_monitor.TryGetCpuLoad(out var cpuLoad, out var cpuLoadReason))
+                        {
+                            AddReading(result.BaselineReadings, ComponentType.Cpu, SensorType.Load, "CPU Load %", cpuLoad);
+                        }
+                        else
+                        {
+                            AddUnavailableReading(result.BaselineReadings, ComponentType.Cpu, SensorType.Load, "CPU Load %", cpuLoadReason);
+                        }
+
+                        if (_monitor.TryGetCpuClockGHz(out var cpuClock, out var cpuClockReason))
+                        {
+                            AddReading(result.BaselineReadings, ComponentType.Cpu, SensorType.Clock, "CPU Clock GHz", cpuClock);
+                        }
+                        else
+                        {
+                            AddUnavailableReading(result.BaselineReadings, ComponentType.Cpu, SensorType.Clock, "CPU Clock GHz", cpuClockReason);
+                        }
                     }
 
                     if (options.ScanGPU)
                     {
-                        try
+                        if (_monitor.TryGetGpuTemperature(out var gpuTemp, out var gpuTempReason))
                         {
-                            var gpuTemp = _monitor.GetGpuTemperature();
-                            var gpuLoad = _monitor.GetGpuLoad();
-
-                            AddReading(result.BaselineReadings, ComponentType.Gpu, SensorType.Temperature, "GPU Temp", gpuTemp);
-                            AddReading(result.BaselineReadings, ComponentType.Gpu, SensorType.Load, "GPU Load", gpuLoad);
+                            AddReading(result.BaselineReadings, ComponentType.Gpu, SensorType.Temperature, "GPU Temp C", gpuTemp);
                         }
-                        catch { /* GPU data unavailable, continue */ }
+                        else
+                        {
+                            AddUnavailableReading(result.BaselineReadings, ComponentType.Gpu, SensorType.Temperature, "GPU Temp C", gpuTempReason);
+                        }
+
+                        if (_monitor.TryGetGpuLoad(out var gpuLoad, out var gpuLoadReason))
+                        {
+                            AddReading(result.BaselineReadings, ComponentType.Gpu, SensorType.Load, "GPU Load %", gpuLoad);
+                        }
+                        else
+                        {
+                            AddUnavailableReading(result.BaselineReadings, ComponentType.Gpu, SensorType.Load, "GPU Load %", gpuLoadReason);
+                        }
                     }
 
                     if (options.ScanRAM)
                     {
-                        try
+                        if (_monitor.TryGetRamUsageGb(out var used, out var ramUsedReason))
                         {
-                            var used = _monitor.GetRamUsageGb();
-                            var load = _monitor.GetRamLoad();
-
                             AddReading(result.BaselineReadings, ComponentType.Ram, SensorType.Data, "RAM Used GB", used);
-                            AddReading(result.BaselineReadings, ComponentType.Ram, SensorType.Load, "RAM Load", load);
                         }
-                        catch { /* RAM data unavailable, continue */ }
+                        else
+                        {
+                            AddUnavailableReading(result.BaselineReadings, ComponentType.Ram, SensorType.Data, "RAM Used GB", ramUsedReason);
+                        }
+
+                        if (_monitor.TryGetRamLoad(out var load, out var ramLoadReason))
+                        {
+                            AddReading(result.BaselineReadings, ComponentType.Ram, SensorType.Load, "RAM Load %", load);
+                        }
+                        else
+                        {
+                            AddUnavailableReading(result.BaselineReadings, ComponentType.Ram, SensorType.Load, "RAM Load %", ramLoadReason);
+                        }
                     }
 
                     if (options.ScanDisk)
                     {
-                        try
+                        if (_monitor.TryGetDiskLoad(out var diskLoad, out var diskLoadReason))
                         {
-                            var diskLoad = _monitor.GetDiskLoad();
-                            var readRate = _monitor.GetDiskReadRateMb();
-                            var writeRate = _monitor.GetDiskWriteRateMb();
-
-                            AddReading(result.BaselineReadings, ComponentType.Disk, SensorType.Load, "Disk Load", diskLoad);
-                            AddReading(result.BaselineReadings, ComponentType.Disk, SensorType.Throughput, "Disk Read MB/s", readRate);
-                            AddReading(result.BaselineReadings, ComponentType.Disk, SensorType.Throughput, "Disk Write MB/s", writeRate);
+                            AddReading(result.BaselineReadings, ComponentType.Disk, SensorType.Load, "Disk Load %", diskLoad);
                         }
-                        catch { /* Disk data unavailable, continue */ }
+                        else
+                        {
+                            AddUnavailableReading(result.BaselineReadings, ComponentType.Disk, SensorType.Load, "Disk Load %", diskLoadReason);
+                        }
+
+                        if (_monitor.TryGetDiskReadRateMbit(out var readRate, out var diskReadReason))
+                        {
+                            AddReading(result.BaselineReadings, ComponentType.Disk, SensorType.Throughput, "Disk Read Mb/s", readRate);
+                        }
+                        else
+                        {
+                            AddUnavailableReading(result.BaselineReadings, ComponentType.Disk, SensorType.Throughput, "Disk Read Mb/s", diskReadReason);
+                        }
+
+                        if (_monitor.TryGetDiskWriteRateMbit(out var writeRate, out var diskWriteReason))
+                        {
+                            AddReading(result.BaselineReadings, ComponentType.Disk, SensorType.Throughput, "Disk Write Mb/s", writeRate);
+                        }
+                        else
+                        {
+                            AddUnavailableReading(result.BaselineReadings, ComponentType.Disk, SensorType.Throughput, "Disk Write Mb/s", diskWriteReason);
+                        }
                     }
                 }
                 catch { /* General error in baseline reading, continue */ }
@@ -140,72 +212,134 @@ namespace CoreCare.Orchestrators
 
                     if (options.ScanCPU)
                     {
-                        try
+                        if (_monitor.TryGetCpuTemperature(out var cpuTempData, out var cpuTempReason))
                         {
-                            var cpuTempData = _monitor.GetCpuTemperature();
-                            var cpuLoad = _monitor.GetCpuLoad();
-                            var cpuClock = _monitor.GetCpuClockGHz();
-
-                            cpuTemps.Add(cpuTempData.Value);
-                            cpuLoads.Add(cpuLoad);
-                            cpuClocks.Add(cpuClock);
-
-                            AddReading(result.UnderLoadReadings, ComponentType.Cpu, SensorType.Temperature, "CPU Temp", cpuTempData.Value);
-                            AddReading(result.UnderLoadReadings, ComponentType.Cpu, SensorType.Load, "CPU Load", cpuLoad);
-                            AddReading(result.UnderLoadReadings, ComponentType.Cpu, SensorType.Clock, "CPU Clock", cpuClock);
+                            if (AddReading(result.UnderLoadReadings, ComponentType.Cpu, SensorType.Temperature, "CPU Temp C", cpuTempData.Value))
+                            {
+                                cpuTemps.Add(cpuTempData.Value);
+                            }
                         }
-                        catch { /* CPU data unavailable, continue */ }
+                        else
+                        {
+                            AddUnavailableReading(result.UnderLoadReadings, ComponentType.Cpu, SensorType.Temperature, "CPU Temp C", cpuTempReason);
+                        }
+
+                        if (_monitor.TryGetCpuLoad(out var cpuLoad, out var cpuLoadReason))
+                        {
+                            if (AddReading(result.UnderLoadReadings, ComponentType.Cpu, SensorType.Load, "CPU Load %", cpuLoad))
+                            {
+                                cpuLoads.Add(cpuLoad);
+                            }
+                        }
+                        else
+                        {
+                            AddUnavailableReading(result.UnderLoadReadings, ComponentType.Cpu, SensorType.Load, "CPU Load %", cpuLoadReason);
+                        }
+
+                        if (_monitor.TryGetCpuClockGHz(out var cpuClock, out var cpuClockReason))
+                        {
+                            if (AddReading(result.UnderLoadReadings, ComponentType.Cpu, SensorType.Clock, "CPU Clock GHz", cpuClock))
+                            {
+                                cpuClocks.Add(cpuClock);
+                            }
+                        }
+                        else
+                        {
+                            AddUnavailableReading(result.UnderLoadReadings, ComponentType.Cpu, SensorType.Clock, "CPU Clock GHz", cpuClockReason);
+                        }
                     }
 
                     if (options.ScanGPU)
                     {
-                        try
+                        if (_monitor.TryGetGpuTemperature(out var gpuTemp, out var gpuTempReason))
                         {
-                            var gpuTemp = _monitor.GetGpuTemperature();
-                            var gpuLoad = _monitor.GetGpuLoad();
-
-                            gpuTemps.Add(gpuTemp);
-                            gpuLoads.Add(gpuLoad);
-
-                            AddReading(result.UnderLoadReadings, ComponentType.Gpu, SensorType.Temperature, "GPU Temp", gpuTemp);
-                            AddReading(result.UnderLoadReadings, ComponentType.Gpu, SensorType.Load, "GPU Load", gpuLoad);
+                            if (AddReading(result.UnderLoadReadings, ComponentType.Gpu, SensorType.Temperature, "GPU Temp C", gpuTemp))
+                            {
+                                gpuTemps.Add(gpuTemp);
+                            }
                         }
-                        catch { /* GPU data unavailable, continue */ }
+                        else
+                        {
+                            AddUnavailableReading(result.UnderLoadReadings, ComponentType.Gpu, SensorType.Temperature, "GPU Temp C", gpuTempReason);
+                        }
+
+                        if (_monitor.TryGetGpuLoad(out var gpuLoad, out var gpuLoadReason))
+                        {
+                            if (AddReading(result.UnderLoadReadings, ComponentType.Gpu, SensorType.Load, "GPU Load %", gpuLoad))
+                            {
+                                gpuLoads.Add(gpuLoad);
+                            }
+                        }
+                        else
+                        {
+                            AddUnavailableReading(result.UnderLoadReadings, ComponentType.Gpu, SensorType.Load, "GPU Load %", gpuLoadReason);
+                        }
                     }
 
                     if (options.ScanRAM)
                     {
-                        try
+                        if (_monitor.TryGetRamUsageGb(out var used, out var ramUsedReason))
                         {
-                            var used = _monitor.GetRamUsageGb();
-                            var load = _monitor.GetRamLoad();
-
-                            ramUsed.Add(used);
-                            ramLoads.Add(load);
-
-                            AddReading(result.UnderLoadReadings, ComponentType.Ram, SensorType.Data, "RAM Used GB", used);
-                            AddReading(result.UnderLoadReadings, ComponentType.Ram, SensorType.Load, "RAM Load", load);
+                            if (AddReading(result.UnderLoadReadings, ComponentType.Ram, SensorType.Data, "RAM Used GB", used))
+                            {
+                                ramUsed.Add(used);
+                            }
                         }
-                        catch { /* RAM data unavailable, continue */ }
+                        else
+                        {
+                            AddUnavailableReading(result.UnderLoadReadings, ComponentType.Ram, SensorType.Data, "RAM Used GB", ramUsedReason);
+                        }
+
+                        if (_monitor.TryGetRamLoad(out var load, out var ramLoadReason))
+                        {
+                            if (AddReading(result.UnderLoadReadings, ComponentType.Ram, SensorType.Load, "RAM Load %", load))
+                            {
+                                ramLoads.Add(load);
+                            }
+                        }
+                        else
+                        {
+                            AddUnavailableReading(result.UnderLoadReadings, ComponentType.Ram, SensorType.Load, "RAM Load %", ramLoadReason);
+                        }
                     }
 
                     if (options.ScanDisk)
                     {
-                        try
+                        if (_monitor.TryGetDiskLoad(out var diskLoad, out var diskLoadReason))
                         {
-                            var diskLoad = _monitor.GetDiskLoad();
-                            var readRate = _monitor.GetDiskReadRateMb();
-                            var writeRate = _monitor.GetDiskWriteRateMb();
-
-                            diskLoads.Add(diskLoad);
-                            diskReads.Add(readRate);
-                            diskWrites.Add(writeRate);
-
-                            AddReading(result.UnderLoadReadings, ComponentType.Disk, SensorType.Load, "Disk Load", diskLoad);
-                            AddReading(result.UnderLoadReadings, ComponentType.Disk, SensorType.Throughput, "Disk Read MB/s", readRate);
-                            AddReading(result.UnderLoadReadings, ComponentType.Disk, SensorType.Throughput, "Disk Write MB/s", writeRate);
+                            if (AddReading(result.UnderLoadReadings, ComponentType.Disk, SensorType.Load, "Disk Load %", diskLoad))
+                            {
+                                diskLoads.Add(diskLoad);
+                            }
                         }
-                        catch { /* Disk data unavailable, continue */ }
+                        else
+                        {
+                            AddUnavailableReading(result.UnderLoadReadings, ComponentType.Disk, SensorType.Load, "Disk Load %", diskLoadReason);
+                        }
+
+                        if (_monitor.TryGetDiskReadRateMbit(out var readRate, out var diskReadReason))
+                        {
+                            if (AddReading(result.UnderLoadReadings, ComponentType.Disk, SensorType.Throughput, "Disk Read Mb/s", readRate))
+                            {
+                                diskReads.Add(readRate);
+                            }
+                        }
+                        else
+                        {
+                            AddUnavailableReading(result.UnderLoadReadings, ComponentType.Disk, SensorType.Throughput, "Disk Read Mb/s", diskReadReason);
+                        }
+
+                        if (_monitor.TryGetDiskWriteRateMbit(out var writeRate, out var diskWriteReason))
+                        {
+                            if (AddReading(result.UnderLoadReadings, ComponentType.Disk, SensorType.Throughput, "Disk Write Mb/s", writeRate))
+                            {
+                                diskWrites.Add(writeRate);
+                            }
+                        }
+                        else
+                        {
+                            AddUnavailableReading(result.UnderLoadReadings, ComponentType.Disk, SensorType.Throughput, "Disk Write Mb/s", diskWriteReason);
+                        }
                     }
                 }
                 catch { /* General error in stress reading, continue */ }
@@ -231,41 +365,58 @@ namespace CoreCare.Orchestrators
 
             // Cálculo de score normalizado según componentes escaneados
             float score = 10f;
-            int componentCount = 0;
             float maxPossibleDeduction = 0f;
 
             if (options.ScanCPU)
             {
-                componentCount++;
-                score -= Math.Min(3f, Math.Max(0, result.PeakCpuTemp / 100f * 3f));
-                score -= Math.Min(2f, Math.Max(0, result.AvgCpuLoad / 100f * 2f));
-                maxPossibleDeduction += 5f;
+                if (cpuTemps.Any())
+                {
+                    score -= Math.Min(3f, Math.Max(0, result.PeakCpuTemp / 100f * 3f));
+                    maxPossibleDeduction += 3f;
+                }
+
+                if (cpuLoads.Any())
+                {
+                    score -= Math.Min(2f, Math.Max(0, result.AvgCpuLoad / 100f * 2f));
+                    maxPossibleDeduction += 2f;
+                }
             }
 
             if (options.ScanGPU)
             {
-                componentCount++;
-                score -= Math.Min(2f, Math.Max(0, result.PeakGpuTemp / 100f * 2f));
-                score -= Math.Min(1.5f, gpuLoads.Any() ? Math.Max(0, gpuLoads.Average() / 100f * 1.5f) : 0f);
-                maxPossibleDeduction += 3.5f;
+                if (gpuTemps.Any())
+                {
+                    score -= Math.Min(2f, Math.Max(0, result.PeakGpuTemp / 100f * 2f));
+                    maxPossibleDeduction += 2f;
+                }
+
+                if (gpuLoads.Any())
+                {
+                    score -= Math.Min(1.5f, Math.Max(0, gpuLoads.Average() / 100f * 1.5f));
+                    maxPossibleDeduction += 1.5f;
+                }
             }
 
             if (options.ScanRAM)
             {
-                componentCount++;
-                score -= Math.Min(2f, Math.Max(0, result.AvgRamLoad / 100f * 2f));
-                maxPossibleDeduction += 2f;
+                if (ramLoads.Any())
+                {
+                    score -= Math.Min(2f, Math.Max(0, result.AvgRamLoad / 100f * 2f));
+                    maxPossibleDeduction += 2f;
+                }
             }
 
             if (options.ScanDisk)
             {
-                componentCount++;
-                score -= Math.Min(1.5f, Math.Max(0, result.AvgDiskLoad / 100f * 1.5f));
-                maxPossibleDeduction += 1.5f;
+                if (diskLoads.Any())
+                {
+                    score -= Math.Min(1.5f, Math.Max(0, result.AvgDiskLoad / 100f * 1.5f));
+                    maxPossibleDeduction += 1.5f;
+                }
             }
 
-            // Normalizar score si no se escanean todos los componentes
-            if (componentCount > 0 && maxPossibleDeduction > 0)
+            // Normalizar score solo con métricas efectivamente disponibles.
+            if (maxPossibleDeduction > 0)
             {
                 float deduction = 10f - score;
                 float scaleFactor = 10.5f / maxPossibleDeduction;  // 10.5 es la suma de todos los máximos posibles
@@ -279,13 +430,13 @@ namespace CoreCare.Orchestrators
             {
                 Timestamp = DateTime.Now,
                 CpuTemp = cpuTemps.Any() ? cpuTemps.Average() : 0f,
-                CpuLoad = result.AvgCpuLoad,
+                CpuLoad = cpuLoads.Any() ? result.AvgCpuLoad : 0f,
                 CpuClock = cpuClocks.Any() ? cpuClocks.Average() : 0f,
                 GpuTemp = gpuTemps.Any() ? gpuTemps.Average() : 0f,
                 GpuLoad = gpuLoads.Any() ? gpuLoads.Average() : 0f,
                 RamUsed = ramUsed.Any() ? ramUsed.Average() : 0f,
-                RamLoad = result.AvgRamLoad,
-                DiskLoad = result.AvgDiskLoad,
+                RamLoad = ramLoads.Any() ? result.AvgRamLoad : 0f,
+                DiskLoad = diskLoads.Any() ? result.AvgDiskLoad : 0f,
                 DiskReadRate = diskReads.Any() ? diskReads.Average() : 0f,
                 DiskWriteRate = diskWrites.Any() ? diskWrites.Average() : 0f,
                 Score = result.Score
