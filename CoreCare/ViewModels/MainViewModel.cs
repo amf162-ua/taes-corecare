@@ -1,16 +1,18 @@
-﻿using System;
+using System;
 using OxyPlot;
 using OxyPlot.Series;
 using OxyPlot.Axes;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CoreCare.Models;
 using CoreCare.Services;
+using CoreCare.Views;
 using CoreCare.Data;
 using CoreCare.Orchestrators;
 using System.Collections.ObjectModel;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Input;
 using System.Windows;
+using QuestPDF.Fluent;
 using System.Linq;
 using System.Windows.Media;
 using System.Text;
@@ -21,10 +23,16 @@ namespace CoreCare.ViewModels
     {
         private readonly HardwareMonitorService _hardwareService;
         private readonly ProcessService _processService;
+        private readonly GeminiAIService _geminiService;
+        private readonly SystemSpecsService _systemSpecsService;
+        private readonly HardwareUpgradeAdvisorService _upgradeAdvisorService;
         private readonly DispatcherTimer _refreshTimer;
 
         [ObservableProperty]
-        private string _cpuDisplay;
+        private string _cpuDisplay = "N/A";
+
+        [ObservableProperty]
+        private bool _isBusy;
 
         [ObservableProperty]
         private DateTime _historyFrom = DateTime.Today.AddDays(-30);
@@ -133,6 +141,9 @@ namespace CoreCare.ViewModels
         {
             _hardwareService = new HardwareMonitorService();
             _processService = new ProcessService();
+            _geminiService = new GeminiAIService();
+            _systemSpecsService = new SystemSpecsService();
+            _upgradeAdvisorService = new HardwareUpgradeAdvisorService();
 
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
             _refreshTimer.Tick += (s, e) => UpdateAllData();
@@ -266,6 +277,198 @@ namespace CoreCare.ViewModels
                     MessageBox.Show("No se pudo cerrar. Puede que no tengas permisos o el proceso ya haya terminado.");
                 }
             }
+        }
+
+        [RelayCommand]
+        public async Task GenerateReportAsync()
+        {
+            if (IsBusy)
+            {
+                return;
+            }
+
+            var saveDialog = new Microsoft.Win32.SaveFileDialog
+            {
+                FileName = $"Informe_CoreCare_{DateTime.Now:yyyyMMdd_HHmmss}",
+                DefaultExt = ".pdf",
+                Filter = "PDF files (*.pdf)|*.pdf"
+            };
+
+            if (saveDialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            LoadingWindow? loadingWindow = null;
+            IsBusy = true;
+
+            try
+            {
+                loadingWindow = new LoadingWindow
+                {
+                    Owner = Application.Current?.MainWindow,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+                loadingWindow.Show();
+
+                loadingWindow.UpdateProgress(0, "Preparando informe...");
+
+                var hardwareTask = Task.Run(() =>
+                {
+                    _hardwareService.UpdateHardware();
+                    _hardwareService.UpdateHardware();
+                });
+                var specsTask = Task.Run(() => _systemSpecsService.GetSystemSpecs());
+
+                await Task.WhenAll(hardwareTask, specsTask);
+
+                loadingWindow.UpdateProgress(25, "Analizando telemetría...");
+
+                var systemSpecs = specsTask.Result;
+                var telemetryWarnings = new System.Collections.Generic.List<string>();
+                var telemetryData = BuildReportTelemetry(systemSpecs, telemetryWarnings);
+                var (upgradeScores, upgradeRecommendations) = _upgradeAdvisorService.Analyze(systemSpecs, telemetryData);
+
+                loadingWindow.UpdateProgress(45, "Preparando recomendaciones...");
+
+                var (recommendations, generatedLocally) = await GetFastRecommendationsAsync(telemetryData, systemSpecs);
+
+                loadingWindow.UpdateProgress(80, "Generando PDF...");
+
+                var data = new ReportData
+                {
+                    CompanyName = "TechRepairs S.L.",
+                    ClientName = "Jesús Pérez",
+                    ReportDate = DateTime.Now,
+                    SystemSpecs = systemSpecs,
+                    Recommendations = recommendations,
+                    TelemetryWarnings = telemetryWarnings,
+                    RecommendationsGeneratedLocally = generatedLocally,
+                    UpgradeScores = upgradeScores,
+                    UpgradeRecommendations = upgradeRecommendations,
+                    TelemetryData = telemetryData
+                };
+
+                var document = new ReportDocument(data);
+                document.GeneratePdf(saveDialog.FileName);
+
+                loadingWindow.UpdateProgress(100, "Completado");
+                loadingWindow.Close();
+
+                MessageBox.Show($"Informe generado con éxito.\nGuardado en: {saveDialog.FileName}", "PDF generado", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al generar el PDF: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                loadingWindow?.Close();
+                IsBusy = false;
+            }
+        }
+
+        private SystemTelemetryMock BuildReportTelemetry(SystemSpecs systemSpecs, System.Collections.Generic.List<string> telemetryWarnings)
+        {
+                float ramUsed = (float)Math.Round(_hardwareService.GetRamUsageGb(), 1);
+                float ramAvailable = (float)Math.Round(_hardwareService.GetRamAvailableGb(), 1);
+                float ramTotal = (float)Math.Round(ramUsed + ramAvailable, 1);
+
+                var cpuTemperature = -1f;
+                if (_hardwareService.TryGetCpuTemperature(out var cpuTemperatureData, out var cpuTemperatureReason))
+                {
+                    cpuTemperature = (float)Math.Round(cpuTemperatureData.Value, 1, MidpointRounding.ToEven);
+                }
+                else
+                {
+                    telemetryWarnings.Add($"Temperatura CPU no disponible: {cpuTemperatureReason}");
+                }
+
+                var diskUsagePercent = -1f;
+                if (_hardwareService.TryGetDiskLoad(out var diskLoad, out var diskLoadReason))
+                {
+                    diskUsagePercent = (float)Math.Round(diskLoad, 1, MidpointRounding.ToEven);
+                }
+                else
+                {
+                    telemetryWarnings.Add($"Uso de disco no disponible: {diskLoadReason}");
+                }
+
+                return new SystemTelemetryMock
+                {
+                    CpuUsagePercent = (float)Math.Round(_hardwareService.GetCpuLoad(), 1, MidpointRounding.ToEven),
+                    CpuTemperatureC = cpuTemperature,
+                    GpuUsagePercent = (float)Math.Round(_hardwareService.GetGpuLoad(), 1, MidpointRounding.ToEven),
+                    GpuTemperatureC = (float)Math.Round(_hardwareService.GetGpuTemperature(), 1, MidpointRounding.ToEven),
+                    RamTotalGb = ramTotal,
+                    RamUsedGb = ramUsed,
+                    DiskType = systemSpecs.DiskModel,
+                    DiskUsagePercent = diskUsagePercent,
+                };
+        }
+
+        private async Task<(System.Collections.Generic.List<string> Recommendations, bool GeneratedLocally)> GetFastRecommendationsAsync(SystemTelemetryMock telemetryData, SystemSpecs systemSpecs)
+        {
+            try
+            {
+                var aiResponse = await _geminiService.GetRecommendationsAsync(telemetryData, systemSpecs);
+                if (!aiResponse.StartsWith("Error:", StringComparison.OrdinalIgnoreCase))
+                {
+                    return (new System.Collections.Generic.List<string> { aiResponse }, false);
+                }
+            }
+            catch
+            {
+            }
+
+            return (BuildLocalRecommendations(telemetryData, systemSpecs), true);
+        }
+
+        private static System.Collections.Generic.List<string> BuildLocalRecommendations(SystemTelemetryMock telemetryData, SystemSpecs systemSpecs)
+        {
+            var recommendations = new System.Collections.Generic.List<string>();
+
+            if (telemetryData.CpuUsagePercent > 80 || telemetryData.CpuTemperatureC > 85)
+            {
+                recommendations.Add($@"=== PRIORIDAD ALTA ===
+[CPU]
+- Problema: {(telemetryData.CpuTemperatureC > 85 ? $"La temperatura de CPU alcanza {telemetryData.CpuTemperatureC:F1} C, por encima del rango recomendado para uso sostenido." : $"El uso de CPU está en {telemetryData.CpuUsagePercent:F1}%, por encima del rango cómodo para uso sostenido.")}
+- Solución: Ejecutar CoreCare como administrador, comprobar refrigeración y cerrar procesos intensivos antes de tareas críticas.
+- Coste: Bajo / Medio
+- Impacto: Alto");
+            }
+
+            if (telemetryData.RamTotalGb > 0 && telemetryData.RamUsedGb / telemetryData.RamTotalGb > 0.8)
+            {
+                recommendations.Add($@"=== PRIORIDAD MEDIA ===
+[Memoria RAM]
+- Problema: La memoria utilizada está cerca del límite disponible ({telemetryData.RamUsedGb:F1} GB de {telemetryData.RamTotalGb:F1} GB).
+- Solución: Cerrar aplicaciones en segundo plano o ampliar RAM si esta situación se repite.
+- Coste: Medio
+- Impacto: Medio / Alto");
+            }
+
+            if (telemetryData.DiskUsagePercent > 80)
+            {
+                recommendations.Add($@"=== PRIORIDAD MEDIA ===
+[Almacenamiento]
+- Problema: El disco presenta una carga elevada ({telemetryData.DiskUsagePercent:F1}%).
+- Solución: Revisar procesos de escritura, estado SMART y espacio disponible en {systemSpecs.DiskModel}.
+- Coste: Bajo
+- Impacto: Medio");
+            }
+
+            if (telemetryData.GpuUsagePercent > 80 || telemetryData.GpuTemperatureC > 85)
+            {
+                recommendations.Add($@"=== PRIORIDAD MEDIA ===
+[GPU]
+- Problema: La GPU muestra carga o temperatura elevada.
+- Solución: Revisar drivers, ventilación y aplicaciones con aceleración gráfica activa.
+- Coste: Bajo
+- Impacto: Medio");
+            }
+
+            return recommendations;
         }
 
         [RelayCommand]

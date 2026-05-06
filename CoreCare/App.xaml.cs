@@ -23,6 +23,11 @@ namespace CoreCare
             base.OnStartup(e);
 
             try
+            // Aceptar licencia comunitaria y gratuita de QuestPDF globalmente en toda la aplicación
+            QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
+            // Asegurarse de que la base de datos se crea al iniciar la aplicación
+            using (var db = new CoreCareDbContext())
             {
                 LogStartup("OnStartup entered");
 
@@ -176,6 +181,14 @@ namespace CoreCare
                 LogStartup($"Seeder failed: {ex.Message}");
             }
         }
-    }
 
+    }
+    public partial class App : Application
+    {
+        public static bool IsUserLoggedIn { get; set; } = false;
+        public static string CurrentUsername { get; set; } = "Invitado";
+
+        // 👇 NUEVO: Estado inicial NO PREMIUM
+        public static bool IsPremium { get; set; } = false;
+    }
 }
