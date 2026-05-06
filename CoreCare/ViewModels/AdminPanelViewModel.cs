@@ -114,14 +114,22 @@ namespace CoreCare.ViewModels
             get => _selectedChat;
             set
             {
-                if (_selectedChat == value)
+                try
                 {
-                    return;
-                }
+                    if (_selectedChat == value)
+                    {
+                        return;
+                    }
 
-                _selectedChat = value;
-                OnPropertyChanged(nameof(SelectedChat));
-                CommandManager.InvalidateRequerySuggested();
+                    _selectedChat = value;
+                    OnPropertyChanged(nameof(SelectedChat));
+                    CommandManager.InvalidateRequerySuggested();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ERROR in SelectedChat setter: {ex}");
+                    Console.WriteLine($"ERROR in SelectedChat setter: {ex}");
+                }
             }
         }
 
@@ -152,34 +160,36 @@ namespace CoreCare.ViewModels
             try
             {
                 Chats.Clear();
+                
+                // Single query with all eager loading to prevent null references
                 var openChats = _db.Chats
                     .Include(c => c.Client)
+                    .Include(c => c.Messages)
+                        .ThenInclude(m => m.Sender)
                     .Where(c => c.Status == ChatStatus.Abierto)
                     .OrderByDescending(c => c.CreatedAt)
                     .ToList();
 
                 foreach (var chat in openChats)
                 {
-                    var messages = _db.ChatMessages
-                        .Include(m => m.Sender)
-                        .Where(m => m.ChatId == chat.Id)
-                        .OrderBy(m => m.SentAt)
-                        .ToList();
-
                     var chatVm = new ChatViewModel
                     {
                         Chat = chat,
-                        HasUnreadMessages = DetectUnreadMessages(chat, messages)
+                        HasUnreadMessages = DetectUnreadMessages(chat, chat.Messages?.ToList() ?? new List<ChatMessage>())
                     };
 
-                    foreach (var msg in messages)
+                    // Use the already-loaded Messages from the chat
+                    if (chat.Messages != null)
                     {
-                        chatVm.Messages.Add(new ChatMessageViewModel
+                        foreach (var msg in chat.Messages.OrderBy(m => m.SentAt))
                         {
-                            Message = msg,
-                            SenderName = msg.Sender?.name ?? "Unknown",
-                            IsAdmin = msg.Sender?.Role == UserRole.Administrador
-                        });
+                            chatVm.Messages.Add(new ChatMessageViewModel
+                            {
+                                Message = msg,
+                                SenderName = msg.Sender?.name ?? "Unknown",
+                                IsAdmin = msg.Sender?.Role == UserRole.Administrador
+                            });
+                        }
                     }
 
                     Chats.Add(chatVm);
@@ -187,7 +197,8 @@ namespace CoreCare.ViewModels
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error loading chats: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"ERROR in LoadChats: {ex}");
+                Console.WriteLine($"Error loading chats: {ex.Message}\n{ex.StackTrace}");
             }
         }
 
@@ -428,21 +439,39 @@ namespace CoreCare.ViewModels
             _pollTimer.Interval = TimeSpan.FromSeconds(3);
             _pollTimer.Tick += (s, e) =>
             {
-                LoadChats();
-                RefreshChatSelection();
+                try
+                {
+                    LoadChats();
+                    RefreshChatSelection();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ERROR in polling timer: {ex}");
+                    Console.WriteLine($"Error in polling timer: {ex.Message}");
+                }
             };
             _pollTimer.Start();
         }
 
         private void RefreshChatSelection()
         {
-            if (SelectedChat != null)
+            try
             {
-                var updatedChat = Chats.FirstOrDefault(c => c.Chat.Id == SelectedChat.Chat.Id);
-                if (updatedChat != null)
+                if (SelectedChat != null)
                 {
-                    SelectedChat = updatedChat;
+                    // Find the updated chat with the same ID
+                    var updatedChat = Chats.FirstOrDefault(c => c.Chat.Id == SelectedChat.Chat.Id);
+                    if (updatedChat != null && updatedChat != SelectedChat)
+                    {
+                        // Only update if it's a different instance
+                        SelectedChat = updatedChat;
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ERROR in RefreshChatSelection: {ex}");
+                Console.WriteLine($"Error in RefreshChatSelection: {ex.Message}");
             }
         }
 
