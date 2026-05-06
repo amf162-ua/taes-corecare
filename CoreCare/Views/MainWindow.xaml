@@ -243,29 +243,57 @@
                                          BorderThickness="0"
                                          Background="Transparent"
                                          Visibility="{Binding IsSupportConversationActive, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                         HorizontalContentAlignment="Stretch"
                                          ScrollViewer.VerticalScrollBarVisibility="Auto">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Margin="0,0,0,10" Padding="12" Background="#F7F7F7">
-                                                <Border.Style>
-                                                    <Style TargetType="Border">
-                                                        <Setter Property="HorizontalAlignment" Value="Left"/>
-                                                        <Setter Property="Background" Value="#F0F0F0"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsMine}" Value="True">
-                                                                <Setter Property="HorizontalAlignment" Value="Right"/>
-                                                                <Setter Property="Background" Value="#D9F0EE"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Border.Style>
+                                            <Grid Margin="0,0,0,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
 
-                                                <StackPanel MaxWidth="460">
-                                                    <TextBlock Text="{Binding SenderName}" FontSize="11" FontWeight="Bold" Foreground="#0E2F33"/>
-                                                    <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Margin="0,4,0,0" Foreground="#222"/>
-                                                    <TextBlock Text="{Binding SentAt, StringFormat={}{0:dd/MM/yyyy HH:mm}}" Margin="0,4,0,0" Foreground="#777" FontSize="10" HorizontalAlignment="Right"/>
-                                                </StackPanel>
-                                            </Border>
+                                                <Border x:Name="Bubble"
+                                                        Grid.Column="0"
+                                                        HorizontalAlignment="Left"
+                                                        MaxWidth="460"
+                                                        Padding="12"
+                                                        Background="#F0F0F0"
+                                                        BorderBrush="#E0E0E0"
+                                                        BorderThickness="1"
+                                                        CornerRadius="16,16,16,4">
+                                                    <StackPanel>
+                                                        <TextBlock x:Name="SenderText"
+                                                                   Text="{Binding SenderName}"
+                                                                   FontSize="11"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="#0E2F33"/>
+                                                        <TextBlock x:Name="MessageText"
+                                                                   Text="{Binding Message}"
+                                                                   TextWrapping="Wrap"
+                                                                   Margin="0,4,0,0"
+                                                                   Foreground="#222"/>
+                                                        <TextBlock x:Name="TimeText"
+                                                                   Text="{Binding SentAt, StringFormat={}{0:dd/MM/yyyy HH:mm}}"
+                                                                   Margin="0,4,0,0"
+                                                                   Foreground="#777"
+                                                                   FontSize="10"
+                                                                   HorizontalAlignment="Right"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </Grid>
+                                                <DataTemplate.Triggers>
+                                                    <DataTrigger Binding="{Binding IsMine}" Value="True">
+                                                        <Setter TargetName="Bubble" Property="Grid.Column" Value="1"/>
+                                                        <Setter TargetName="Bubble" Property="HorizontalAlignment" Value="Right"/>
+                                                        <Setter TargetName="Bubble" Property="Background" Value="#D9F0EE"/>
+                                                        <Setter TargetName="Bubble" Property="BorderBrush" Value="#B8E1DB"/>
+                                                        <Setter TargetName="Bubble" Property="CornerRadius" Value="16,16,4,16"/>
+                                                        <Setter TargetName="SenderText" Property="TextAlignment" Value="Right"/>
+                                                        <Setter TargetName="MessageText" Property="TextAlignment" Value="Right"/>
+                                                        <Setter TargetName="TimeText" Property="HorizontalAlignment" Value="Right"/>
+                                                    </DataTrigger>
+                                                </DataTemplate.Triggers>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>

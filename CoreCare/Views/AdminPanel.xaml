@@ -179,30 +179,59 @@
                         Background="White"
                         BorderThickness="0"
                         Margin="0,15,0,15"
+                        HorizontalContentAlignment="Stretch"
                         Visibility="{Binding IsDetailPaneOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <Border Padding="10" Margin="0,4">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
+                            <Grid Margin="0,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
 
+                                <Border x:Name="Bubble"
+                                        Grid.Column="0"
+                                        HorizontalAlignment="Left"
+                                        MaxWidth="420"
+                                        Padding="12,10"
+                                        Background="#F2F4F6"
+                                        BorderBrush="#E0E0E0"
+                                        BorderThickness="1"
+                                        CornerRadius="16,16,16,4">
                                     <StackPanel>
-                                        <TextBlock Text="{Binding SenderName}" 
-                                                  FontWeight="Bold" 
-                                                  Foreground="#0E2F33"
-                                                  FontSize="11"/>
-                                        <TextBlock Text="{Binding Message}" 
-                                                  Foreground="#333" 
-                                                  TextWrapping="Wrap"
-                                                  Margin="0,4,0,4"/>
-                                        <TextBlock Text="{Binding SentAt, Converter={StaticResource DateTimeConverter}}" 
-                                                  FontSize="10" 
-                                                  Foreground="#999"/>
+                                        <TextBlock x:Name="SenderText"
+                                                   Text="{Binding SenderName}"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#0E2F33"
+                                                   FontSize="11"/>
+                                        <TextBlock x:Name="MessageText"
+                                                   Text="{Binding Message}"
+                                                   Foreground="#333"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,5,0,6"/>
+                                        <TextBlock x:Name="TimeText"
+                                                   Text="{Binding SentAt, Converter={StaticResource DateTimeConverter}}"
+                                                   FontSize="10"
+                                                   Foreground="#888"/>
                                     </StackPanel>
-                                </Grid>
-                            </Border>
+                                </Border>
+
+                            </Grid>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding IsOutgoing}" Value="True">
+                                    <Setter TargetName="Bubble" Property="Grid.Column" Value="1"/>
+                                    <Setter TargetName="Bubble" Property="HorizontalAlignment" Value="Right"/>
+                                    <Setter TargetName="Bubble" Property="Background" Value="#01696F"/>
+                                    <Setter TargetName="Bubble" Property="BorderBrush" Value="#01696F"/>
+                                    <Setter TargetName="Bubble" Property="CornerRadius" Value="16,16,4,16"/>
+                                    <Setter TargetName="SenderText" Property="Foreground" Value="#E5F7F6"/>
+                                    <Setter TargetName="MessageText" Property="Foreground" Value="White"/>
+                                    <Setter TargetName="TimeText" Property="Foreground" Value="#CDE7E6"/>
+                                    <Setter TargetName="SenderText" Property="TextAlignment" Value="Right"/>
+                                    <Setter TargetName="MessageText" Property="TextAlignment" Value="Right"/>
+                                    <Setter TargetName="TimeText" Property="TextAlignment" Value="Right"/>
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>

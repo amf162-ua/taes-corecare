@@ -40,6 +40,7 @@ namespace CoreCare.ViewModels
         public string SenderName { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
         public DateTime SentAt { get; set; }
+        public bool IsOutgoing { get; set; }
     }
 
     public partial class UserItemViewModel : ObservableObject
@@ -263,7 +264,8 @@ namespace CoreCare.ViewModels
                         Id = message.Id,
                         SenderName = message.Sender?.username ?? message.Sender?.name ?? "Usuario desconocido",
                         Message = message.Message,
-                        SentAt = message.SentAt
+                        SentAt = message.SentAt,
+                        IsOutgoing = message.SenderId == SessionService.CurrentUser?.Id
                     };
 
                     SelectedChatMessages.Add(viewModel);
@@ -302,7 +304,8 @@ namespace CoreCare.ViewModels
                     Id = message.Id,
                     SenderName = SessionService.CurrentUser?.username ?? SessionService.CurrentUser?.name ?? "Administrador",
                     Message = message.Message,
-                    SentAt = message.SentAt
+                    SentAt = message.SentAt,
+                    IsOutgoing = true
                 };
 
                 SelectedChatMessages.Add(messageVM);
