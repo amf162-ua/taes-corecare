@@ -1,5 +1,6 @@
 using System.Windows;
 using CoreCare.Services;
+using CoreCare.Models;
 
 namespace CoreCare
 {
@@ -25,9 +26,19 @@ namespace CoreCare
 
             SessionService.SignIn(user);
 
-            var mainWindow = new MainWindow();
-            Application.Current.MainWindow = mainWindow;
-            mainWindow.Show();
+            // Redirect admins to AdminPanel, regular users to MainWindow
+            if (user.Role == UserRole.Administrador)
+            {
+                var adminWindow = new AdminWindow();
+                Application.Current.MainWindow = adminWindow;
+                adminWindow.Show();
+            }
+            else
+            {
+                var mainWindow = new MainWindow();
+                Application.Current.MainWindow = mainWindow;
+                mainWindow.Show();
+            }
             Close();
         }
 
