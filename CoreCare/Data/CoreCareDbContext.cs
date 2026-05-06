@@ -50,6 +50,19 @@ namespace CoreCare.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // Use a tolerant converter: accept old English values in existing DB rows
+            var roleConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<UserRole, string>(
+                v => v == UserRole.Administrador ? "Administrador" : "Cliente",
+                v => (v == "Client" || v == "client" || v == "cliente") ? UserRole.Cliente :
+                     (v == "Management" || v == "management" || v == "Admin" || v == "admin" || v == "Administrador" || v == "administrador") ? UserRole.Administrador :
+                     UserRole.Cliente
+            );
+
+            modelBuilder.Entity<User>()
+                .Property(u => u.Role)
+                .HasConversion(roleConverter)
+                .HasDefaultValue(UserRole.Cliente);
+
             modelBuilder.Entity<User>()
                 .Property(u => u.Plan)
                 .HasConversion<string>();

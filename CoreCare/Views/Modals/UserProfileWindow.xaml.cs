@@ -77,6 +77,30 @@ namespace CoreCare.Views.Modals
             HardwareFormPanel.DataContext = _hardwareData;
         }
 
+        private void BtnUpgrade_Click(object sender, RoutedEventArgs e)
+        {
+            // Cerramos o minimizamos el perfil si quieres, pero lo mejor es abrirlo encima
+            var premiumWin = new PremiumWindow();
+            premiumWin.Owner = this; // Esta ventana es la dueña ahora
+
+            if (premiumWin.ShowDialog() == true)
+            {
+                var paymentWin = new PaymentWindow();
+                paymentWin.Owner = this;
+
+                if (paymentWin.ShowDialog() == true)
+                {
+                    App.IsPremium = true;
+
+                    // Actualizamos visualmente el perfil sin cerrarlo
+                    PremiumBadge.Visibility = Visibility.Visible;
+                    PremiumPurchaseSection.Visibility = Visibility.Collapsed;
+
+                    MessageBox.Show("¡Bienvenido a Premium!", "Éxito");
+                }
+            }
+        }
+
         private void BtnEditSave_Click(object sender, RoutedEventArgs e)
         {
             if (!_isEditing)
@@ -94,7 +118,7 @@ namespace CoreCare.Views.Modals
 
                 HardwareFormPanel.IsEnabled = true;
                 BtnEditSave.Content = "GUARDAR";
-                BtnEditSave.Background = new SolidColorBrush(Color.FromRgb(34, 139, 34)); // Verde
+                BtnEditSave.Background = new SolidColorBrush(Color.FromRgb(34, 139, 34));
                 BtnCancelEdit.Visibility = Visibility.Visible;
             }
             else

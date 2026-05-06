@@ -1,8 +1,10 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Management;
+using System.Threading;
 using LibreHardwareMonitor.Hardware;
 
 namespace CoreCare.Services
@@ -198,7 +200,7 @@ namespace CoreCare.Services
 
             value = new TelemetryData
             {
-                Value = _cpuTempWindow.Take(_tempReadingsCount).Average(),
+                Value = avgTemp,
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
             };
 
@@ -423,7 +425,10 @@ namespace CoreCare.Services
                 s.SensorType == SensorType.Load &&
                 s.Name.Contains("Used", StringComparison.OrdinalIgnoreCase));
 
-            if (loadSensor?.Value is float load)
+            var readMbit = TryGetDiskReadRateMbit(out var readRate, out _) ? readRate : 0f;
+            var writeMbit = TryGetDiskWriteRateMbit(out var writeRate, out _) ? writeRate : 0f;
+            var throughputMbit = readMbit + writeMbit;
+            if (throughputMbit > 0.5f)
             {
                 value = load;
                 return true;
@@ -529,13 +534,64 @@ namespace CoreCare.Services
         {
             try
             {
-                using var searcher = new ManagementObjectSearcher(
-                    "SELECT PercentDiskTime FROM Win32_PerfFormattedData_PerfDisk_LogicalDisk WHERE Name = '_Total'");
+                var physicalDiskValue = TryGetWmiDiskPercentTime(
+                    "SELECT Name, PercentDiskTime FROM Win32_PerfFormattedData_PerfDisk_PhysicalDisk");
+                if (physicalDiskValue.HasValue)
+                {
+                    return physicalDiskValue.Value;
+                }
+
+                Thread.Sleep(200);
+
+                physicalDiskValue = TryGetWmiDiskPercentTime(
+                    "SELECT Name, PercentDiskTime FROM Win32_PerfFormattedData_PerfDisk_PhysicalDisk");
+                if (physicalDiskValue.HasValue)
+                {
+                    return physicalDiskValue.Value;
+                }
+
+                return TryGetWmiDiskPercentTime(
+                    "SELECT Name, PercentDiskTime FROM Win32_PerfFormattedData_PerfDisk_LogicalDisk");
+            }
+            catch { }
+
+            return null;
+        }
+
+        private static float? TryGetWmiDiskPercentTime(string query)
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher(query);
+                var values = new List<float>();
+                float? totalValue = null;
 
                 foreach (var item in searcher.Get())
                 {
-                    return Convert.ToSingle(item["PercentDiskTime"]);
+                    var name = item["Name"]?.ToString() ?? string.Empty;
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        continue;
+                    }
+
+                    var rawValue = Convert.ToSingle(item["PercentDiskTime"]);
+                    if (float.IsNaN(rawValue) || float.IsInfinity(rawValue) || rawValue < 0f)
+                    {
+                        continue;
+                    }
+
+                    var clampedValue = ClampPercent(rawValue);
+                    if (name.Equals("_Total", StringComparison.OrdinalIgnoreCase))
+                    {
+                        totalValue = clampedValue;
+                    }
+                    else
+                    {
+                        values.Add(clampedValue);
+                    }
                 }
+
+                return values.Any() ? values.Max() : totalValue;
             }
             catch { }
 

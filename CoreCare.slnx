@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Elementos de la solución/">
+    <File Path="nuget.config" />
+  </Folder>
   <Project Path="CoreCare/CoreCare.csproj" />
   <Project Path="PruebaMonitor/PruebaMonitor.csproj" Id="0b355ef3-4c2c-4454-9148-f06fa6e6d755" />
 </Solution>
