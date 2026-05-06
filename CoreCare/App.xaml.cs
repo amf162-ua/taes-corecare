@@ -10,6 +10,7 @@ using CoreCare.Orchestrators;
 using CoreCare.Services;
 using CoreCare.Models;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Infrastructure;
 
 namespace CoreCare
 {
@@ -40,6 +41,8 @@ namespace CoreCare
         {
             try
             {
+                QuestPDF.Settings.License = LicenseType.Community;
+
                 // 1. Inicializamos los sensores globales
                 Monitor = new HardwareMonitorService();
                 Processes = new ProcessService();

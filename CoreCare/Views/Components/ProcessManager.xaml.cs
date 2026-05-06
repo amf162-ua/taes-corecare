@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using CoreCare.Models;
+using CoreCare.ViewModels;
 
 namespace CoreCare.Views.Components
 {
@@ -12,6 +13,7 @@ namespace CoreCare.Views.Components
     {
         private ObservableCollection<SystemProcess> _processes;
         private DispatcherTimer _refreshTimer;
+        private MainViewModel? _reportViewModel;
 
         public ProcessManager()
         {
@@ -71,6 +73,21 @@ namespace CoreCare.Views.Components
             else
             {
                 MessageBox.Show("No se puede cerrar este proceso. Puede ser una aplicación del sistema protegida.");
+            }
+        }
+
+        private async void BtnGenerateReport_Click(object sender, RoutedEventArgs e)
+        {
+            BtnGenerateReport.IsEnabled = false;
+
+            try
+            {
+                _reportViewModel ??= new MainViewModel();
+                await _reportViewModel.GenerateReportAsync();
+            }
+            finally
+            {
+                BtnGenerateReport.IsEnabled = true;
             }
         }
     }
