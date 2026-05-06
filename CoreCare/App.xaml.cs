@@ -1,4 +1,5 @@
-﻿using System.Configuration;
+using System;
+using System.Configuration;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
@@ -6,6 +7,7 @@ using System.Windows;
 using CoreCare.Data;
 using CoreCare.Models;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Infrastructure;
 
 namespace CoreCare
 {
@@ -15,8 +17,8 @@ namespace CoreCare
     public partial class App : Application
     {
         // Comprueba si la base de datos existe y la crea si no existe,
-        // así todos obtienemos la BD automáticamente
-        // la primera vez que ejecutamos el proyecto. 
+        // así todos obtenemos la BD automáticamente
+        // la primera vez que ejecutamos el proyecto.
         // por ahora la db solo contiene la tabla de registros de resultados del benchmark y users
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -24,6 +26,9 @@ namespace CoreCare
 
             try
             {
+                // QuestPDF license (needed for report generation)
+                QuestPDF.Settings.License = LicenseType.Community;
+
                 LogStartup("OnStartup entered");
 
                 using (var db = new CoreCareDbContext())
@@ -219,12 +224,13 @@ CREATE INDEX IF NOT EXISTS IX_ChatMessages_SenderId ON ChatMessages (SenderId);"
         }
 
     }
+
     public partial class App : Application
     {
         public static bool IsUserLoggedIn { get; set; } = false;
         public static string CurrentUsername { get; set; } = "Invitado";
 
-        // 👇 NUEVO: Estado inicial NO PREMIUM
+        // Estado inicial NO PREMIUM
         public static bool IsPremium { get; set; } = false;
     }
 }

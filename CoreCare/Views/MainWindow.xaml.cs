@@ -1,4 +1,4 @@
-﻿using CoreCare.ViewModels;
+using CoreCare.ViewModels;
 using CoreCare.Services;
 using OxyPlot;
 using OxyPlot.Series;
@@ -206,4 +206,4 @@ namespace CoreCare
             }
         }
     }
-}
+}

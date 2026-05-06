@@ -1,7 +1,7 @@
-﻿<Window x:Class="CoreCare.Views.Modals.LoginWindow"
+<Window x:Class="CoreCare.Views.Modals.LoginWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Acceso" Height="500" Width="400"
+        Title="Acceso" Height="550" Width="400"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         WindowStartupLocation="CenterOwner">
 
@@ -66,9 +66,9 @@
     <Border Background="#F8FAFC" CornerRadius="12" BorderBrush="#D4D1CA" BorderThickness="2">
         <Grid Margin="25">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/> 
-                <RowDefinition Height="*"/>    
-                <RowDefinition Height="Auto"/> 
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <StackPanel Grid.Row="0" Margin="0,0,0,25">
@@ -77,28 +77,44 @@
             </StackPanel>
 
             <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0">
+                <!-- PESTAÑA DE ACCESO (LOGIN) -->
                 <TabItem Header="ACCESO" Style="{StaticResource LightLoginTab}">
-                    <StackPanel Margin="0,20,0,0">
-                        <TextBlock Text="USUARIO / EMAIL" Foreground="#4B5563" FontSize="11" FontWeight="Bold" Margin="0,0,0,5"/>
-                        <TextBox x:Name="TxtLoginEmail" Background="#FFFFFF" Foreground="#1B1F24" BorderBrush="#C9D1D8" Padding="10" Margin="0,0,0,15"/>
-                        
-                        <TextBlock Text="CONTRASEÑA" Foreground="#4B5563" FontSize="11" FontWeight="Bold" Margin="0,0,0,5"/>
-                        <PasswordBox x:Name="TxtLoginPassword" Background="#FFFFFF" Foreground="#1B1F24" BorderBrush="#C9D1D8" Padding="10" Margin="0,0,0,25"/>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="0,20,0,0">
+                            <TextBlock Text="USUARIO / EMAIL" Foreground="#4B5563" FontSize="11" FontWeight="Bold" Margin="0,0,0,5"/>
+                            <TextBox x:Name="UsernameBox" Background="#FFFFFF" Foreground="#1B1F24" BorderBrush="#C9D1D8" Padding="10" Margin="0,0,0,15"/>
 
-                        <Button Content="INICIAR SESIÓN" Style="{StaticResource LightActionButton}" Height="45" Click="BtnLogin_Click"/>
-                    </StackPanel>
+                            <TextBlock Text="CONTRASEÑA" Foreground="#4B5563" FontSize="11" FontWeight="Bold" Margin="0,0,0,5"/>
+                            <PasswordBox x:Name="PasswordBox" Background="#FFFFFF" Foreground="#1B1F24" BorderBrush="#C9D1D8" Padding="10" Margin="0,0,0,25"/>
+
+                            <TextBlock x:Name="ErrorText" Foreground="#FF5555" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10" Visibility="Collapsed" HorizontalAlignment="Center"/>
+
+                            <Button Content="INICIAR SESIÓN" Style="{StaticResource LightActionButton}" Height="45" Click="BtnLogin_Click"/>
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
-                
-                <TabItem Header="REGISTRO" Style="{StaticResource LightLoginTab}">
-                    <StackPanel Margin="0,20,0,0">
-                        <TextBlock Text="NOMBRE COMPLETO" Foreground="#4B5563" FontSize="11" FontWeight="Bold" Margin="0,0,0,5"/>
-                        <TextBox Background="#FFFFFF" Foreground="#1B1F24" BorderBrush="#C9D1D8" Padding="10" Margin="0,0,0,10"/>
-                        
-                        <TextBlock Text="EMAIL" Foreground="#4B5563" FontSize="11" FontWeight="Bold" Margin="0,0,0,5"/>
-                        <TextBox Background="#FFFFFF" Foreground="#1B1F24" BorderBrush="#C9D1D8" Padding="10" Margin="0,0,0,10"/>
 
-                        <Button Content="CREAR CUENTA" Style="{StaticResource LightActionButton}" Height="45" Margin="0,15,0,0"/>
-                    </StackPanel>
+                <!-- PESTAÑA DE REGISTRO -->
+                <TabItem Header="REGISTRO" Style="{StaticResource LightLoginTab}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="0,20,0,0">
+                            <TextBlock Text="NOMBRE COMPLETO" Foreground="#4B5563" FontSize="11" FontWeight="Bold" Margin="0,0,0,5"/>
+                            <TextBox x:Name="RegNombreBox" Background="#FFFFFF" Foreground="#1B1F24" BorderBrush="#C9D1D8" Padding="10" Margin="0,0,0,15"/>
+
+                            <TextBlock Text="EMAIL (USUARIO)" Foreground="#4B5563" FontSize="11" FontWeight="Bold" Margin="0,0,0,5"/>
+                            <TextBox x:Name="RegEmailBox" Background="#FFFFFF" Foreground="#1B1F24" BorderBrush="#C9D1D8" Padding="10" Margin="0,0,0,15"/>
+
+                            <TextBlock Text="CONTRASEÑA" Foreground="#4B5563" FontSize="11" FontWeight="Bold" Margin="0,0,0,5"/>
+                            <PasswordBox x:Name="RegPasswordBox" Background="#FFFFFF" Foreground="#1B1F24" BorderBrush="#C9D1D8" Padding="10" Margin="0,0,0,15"/>
+
+                            <TextBlock Text="CONFIRMAR CONTRASEÑA" Foreground="#4B5563" FontSize="11" FontWeight="Bold" Margin="0,0,0,5"/>
+                            <PasswordBox x:Name="RegConfirmPasswordBox" Background="#FFFFFF" Foreground="#1B1F24" BorderBrush="#C9D1D8" Padding="10" Margin="0,0,0,25"/>
+
+                            <TextBlock x:Name="RegErrorText" Foreground="#FF5555" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10" Visibility="Collapsed" HorizontalAlignment="Center"/>
+
+                            <Button Content="CREAR CUENTA" Style="{StaticResource LightActionButton}" Height="45" Margin="0,15,0,0" Click="BtnRegister_Click"/>
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
             </TabControl>
 

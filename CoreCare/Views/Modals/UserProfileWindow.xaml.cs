@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System;
+using System.Windows;
 using System.Windows.Media;
 using CoreCare.Models;
 
@@ -14,10 +15,10 @@ namespace CoreCare.Views.Modals
         {
             InitializeComponent();
 
-            // Configurar datos de usuario
+            // Configurar datos básicos del usuario
             TxtUserName.Text = userName;
 
-            // Si es premium, mostramos la medalla y ocultamos la sección de compra
+            // Gestión visual del estado Premium
             if (isPremium)
             {
                 PremiumBadge.Visibility = Visibility.Visible;
@@ -29,52 +30,58 @@ namespace CoreCare.Views.Modals
                 PremiumPurchaseSection.Visibility = Visibility.Visible;
             }
 
-            // Inicializar datos de hardware (esto vendría de una DB normalmente)
-            _hardwareData = new HardwareProfile
-            {
-                Cpu = "Intel Core i9-13900K",
-                Gpu = "NVIDIA RTX 4090",
-                Ram = "32GB DDR5 6000MHz",
-                Storage = "2TB NVMe SSD",
-                Motherboard = "ASUS ROG Z790"
-            };
-
-            HardwareFormPanel.DataContext = _hardwareData;
+            // Cargar los componentes reales del sistema
+            LoadRealHardwareData();
         }
 
-        private void BtnClose_Click(object sender, RoutedEventArgs e)
+        private void LoadRealHardwareData()
         {
-            this.Close();
-        }
+            // Accedemos al servicio de monitorización
+            var monitor = App.Monitor;
+            monitor.UpdateHardware(); // Actualizamos sensores antes de leer
 
-        private void BtnUpgrade_Click(object sender, RoutedEventArgs e)
-        {
-            // Cerramos o minimizamos el perfil si quieres, pero lo mejor es abrirlo encima
-            var premiumWin = new PremiumWindow();
-            premiumWin.Owner = this; // Esta ventana es la dueña ahora
+            _hardwareData = new HardwareProfile();
 
-            if (premiumWin.ShowDialog() == true)
+            // 1. Detección de CPU (Núcleos y Velocidad real)
+            if (monitor.TryGetCpuClockGHz(out float clock, out _))
             {
-                var paymentWin = new PaymentWindow();
-                paymentWin.Owner = this;
-
-                if (paymentWin.ShowDialog() == true)
-                {
-                    App.IsPremium = true;
-
-                    // Actualizamos visualmente el perfil sin cerrarlo
-                    PremiumBadge.Visibility = Visibility.Visible;
-                    PremiumPurchaseSection.Visibility = Visibility.Collapsed;
-
-                    MessageBox.Show("¡Bienvenido a Premium!", "Éxito");
-                }
+                _hardwareData.Cpu = $"Intel/AMD ({monitor.Cores} Cores) @ {clock:F2} GHz";
             }
+
+            // 2. Detección de RAM (Uso actual en GB)
+            if (monitor.TryGetRamUsageGb(out float ramUsed, out _))
+            {
+                _hardwareData.Ram = $"{ramUsed:F1} GB en uso actual";
+            }
+
+            // 3. Detección de GPU (Carga y Temperatura si está disponible)
+            if (monitor.TryGetGpuLoad(out float gLoad, out _) && monitor.TryGetGpuTemperature(out float gTemp, out _))
+            {
+                _hardwareData.Gpu = $"GPU Activa: {gLoad:F0}% Carga / {gTemp:F0}°C";
+            }
+            else
+            {
+                _hardwareData.Gpu = "GPU Detectada (Sin sensores de telemetría)";
+            }
+
+            // 4. Actividad del Almacenamiento
+            if (monitor.TryGetDiskLoad(out float dLoad, out _))
+            {
+                _hardwareData.Storage = $"Actividad de Disco: {dLoad:F1}%";
+            }
+
+            // 5. Datos de Placa Base y Sistema (Uptime)
+            _hardwareData.Motherboard = $"Sistema Operativo (Uptime: {monitor.GetUpTime()})";
+
+            // Vinculamos los datos reales al formulario XAML
+            HardwareFormPanel.DataContext = _hardwareData;
         }
 
         private void BtnEditSave_Click(object sender, RoutedEventArgs e)
         {
             if (!_isEditing)
             {
+                // Iniciar modo edición: creamos respaldo
                 _isEditing = true;
                 _backupData = new HardwareProfile
                 {
@@ -92,10 +99,11 @@ namespace CoreCare.Views.Modals
             }
             else
             {
+                // Finalizar edición y guardar cambios
                 _isEditing = false;
                 HardwareFormPanel.IsEnabled = false;
                 BtnEditSave.Content = "EDITAR";
-                BtnEditSave.Background = new SolidColorBrush(Color.FromRgb(0, 139, 139));
+                BtnEditSave.Background = new SolidColorBrush(Color.FromRgb(0, 139, 139)); // Cian
                 BtnCancelEdit.Visibility = Visibility.Collapsed;
 
                 MessageBox.Show("Perfil de hardware actualizado correctamente.", "Guardado");
@@ -104,6 +112,7 @@ namespace CoreCare.Views.Modals
 
         private void BtnCancel_Click(object sender, RoutedEventArgs e)
         {
+            // Restaurar datos desde el respaldo
             _hardwareData.Cpu = _backupData.Cpu;
             _hardwareData.Gpu = _backupData.Gpu;
             _hardwareData.Ram = _backupData.Ram;
@@ -116,9 +125,34 @@ namespace CoreCare.Views.Modals
             BtnEditSave.Background = new SolidColorBrush(Color.FromRgb(0, 139, 139));
             BtnCancelEdit.Visibility = Visibility.Collapsed;
 
-            // Refrescar binding
+            // Refrescar el enlace de datos
             HardwareFormPanel.DataContext = null;
             HardwareFormPanel.DataContext = _hardwareData;
+        }
+
+        // ¡Aquí estaba el problema! He dejado solo esta versión que es más limpia
+        private void BtnUpgrade_Click(object sender, RoutedEventArgs e)
+        {
+            // Flujo de actualización a Premium
+            var premiumWin = new PremiumWindow { Owner = this };
+
+            if (premiumWin.ShowDialog() == true)
+            {
+                var paymentWin = new PaymentWindow { Owner = this };
+
+                if (paymentWin.ShowDialog() == true)
+                {
+                    App.IsPremium = true;
+                    PremiumBadge.Visibility = Visibility.Visible;
+                    PremiumPurchaseSection.Visibility = Visibility.Collapsed;
+                    MessageBox.Show("¡Bienvenido a Core Care Premium!", "Éxito");
+                }
+            }
+        }
+
+        private void BtnClose_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
         }
     }
 }
