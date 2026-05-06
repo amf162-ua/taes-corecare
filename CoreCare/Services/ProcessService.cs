@@ -25,7 +25,9 @@ namespace CoreCare.Services
                             Id = p.Id,
                             Name = p.ProcessName,
                             Description = p.MainModule?.FileVersionInfo.FileDescription ?? p.ProcessName,
-                            RamUsageMB = Math.Round(p.WorkingSet64 / 1024.0 / 1024.0, 2)
+                            RamUsageMB = Math.Round(p.WorkingSet64 / 1024.0 / 1024.0, 2),
+                            IsCritical = p.ProcessName.Equals("CoreCare", StringComparison.OrdinalIgnoreCase) ||
+                                         p.ProcessName.Equals("devenv", StringComparison.OrdinalIgnoreCase)
                         });
                     }
                 }
