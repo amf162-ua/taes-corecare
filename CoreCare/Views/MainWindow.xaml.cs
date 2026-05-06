@@ -16,6 +16,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using CoreCare.Models;
+using CoreCare.Views;
 
 namespace CoreCare
 {
@@ -27,24 +29,41 @@ namespace CoreCare
         public MainWindow()
         {
             InitializeComponent();
+
+            // Keep a single root VM so role-based visibility bindings always resolve.
             var vm = new MainViewModel();
             this.DataContext = vm;
 
-            ConfigureHoverTracking(CpuPlotView);
-            ConfigureHoverTracking(GpuPlotView);
-            ConfigureHoverTracking(RamPlotView);
-            ConfigureHoverTracking(DiskPlotView);
+            var isAdmin = SessionService.CurrentUser?.Role == UserRole.Administrador;
+            ClientHeader.Visibility = isAdmin ? Visibility.Collapsed : Visibility.Visible;
+            ClientTabs.Visibility = isAdmin ? Visibility.Collapsed : Visibility.Visible;
+            AdminHost.Visibility = isAdmin ? Visibility.Visible : Visibility.Collapsed;
 
-            Loaded += (_, _) => Dispatcher.BeginInvoke(new Action(DrawHeatmap), System.Windows.Threading.DispatcherPriority.Loaded);
-
-            // Subscribe to VM property changes to redraw heatmap
-            vm.PropertyChanged += (s, e) =>
+            if (isAdmin)
             {
-                if (e.PropertyName == nameof(MainViewModel.MiniCpuPlot))
+                AdminHost.Content = new AdminPanel();
+                return;
+            }
+
+            // Client-only visual setup.
+            if (!isAdmin)
+            {
+                ConfigureHoverTracking(CpuPlotView);
+                ConfigureHoverTracking(GpuPlotView);
+                ConfigureHoverTracking(RamPlotView);
+                ConfigureHoverTracking(DiskPlotView);
+
+                Loaded += (_, _) => Dispatcher.BeginInvoke(new Action(DrawHeatmap), System.Windows.Threading.DispatcherPriority.Loaded);
+
+                // Subscribe to VM property changes to redraw heatmap
+                vm.PropertyChanged += (s, e) =>
                 {
-                    Dispatcher.BeginInvoke(new Action(DrawHeatmap), System.Windows.Threading.DispatcherPriority.Background);
-                }
-            };
+                    if (e.PropertyName == nameof(MainViewModel.MiniCpuPlot))
+                    {
+                        Dispatcher.BeginInvoke(new Action(DrawHeatmap), System.Windows.Threading.DispatcherPriority.Background);
+                    }
+                };
+            }
         }
 
         private void Logout_Click(object sender, RoutedEventArgs e)

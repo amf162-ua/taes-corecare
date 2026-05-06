@@ -1,0 +1,234 @@
+<UserControl x:Class="CoreCare.Views.AdminPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:CoreCare.Converters"
+    Background="#F5F5F7">
+    
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <local:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+        <local:NotNullToVisibilityConverter x:Key="NotNullToVisibilityConverter"/>
+        <local:CountToStringConverter x:Key="CountToStringConverter"/>
+        <local:DateTimeToFormattedStringConverter x:Key="DateTimeConverter"/>
+    </UserControl.Resources>
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Admin Header -->
+        <Border Grid.Row="0" Background="#0E2F33" Padding="12,10" Margin="10,10,10,0" CornerRadius="8">
+            <DockPanel LastChildFill="False">
+                <StackPanel DockPanel.Dock="Left">
+                    <TextBlock Text="CoreCare - Panel de Administración" Foreground="White" FontSize="18" FontWeight="Bold"/>
+                    <TextBlock Text="{Binding AdminUserLabel}" Foreground="#D7E7E4" FontSize="12"/>
+                </StackPanel>
+
+                <Button DockPanel.Dock="Right"
+                        Content="Cerrar sesión"
+                        Padding="14,6"
+                        Margin="12,0,0,0"
+                        Background="#D95C5C"
+                        Foreground="White"
+                        Click="Logout_Click"/>
+            </DockPanel>
+        </Border>
+
+        <!-- Main Content Area -->
+        <Grid Grid.Row="1" Margin="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="350"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Open Chats List -->
+            <Grid Grid.Column="0" Margin="0,0,10,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" 
+                           Text="Chats Abiertos" 
+                           FontSize="16" 
+                           FontWeight="Bold" 
+                           Foreground="#0E2F33"
+                           Margin="0,0,0,10"/>
+
+                <StackPanel Grid.Row="1" Margin="0,0,0,10">
+                    <TextBlock Text="{Binding PendingChatsCount, Converter={StaticResource CountToStringConverter}}" 
+                               FontSize="12" 
+                               Foreground="#D95C5C" 
+                               FontWeight="SemiBold"/>
+                </StackPanel>
+
+                <Border Grid.Row="2" Background="White" BorderBrush="#D4D1CA" BorderThickness="1" CornerRadius="4">
+                    <ListBox ItemsSource="{Binding OpenChats}"
+                             SelectedItem="{Binding SelectedChat}"
+                             Background="White"
+                             BorderThickness="0">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="10" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding ClientName}" 
+                                                   FontWeight="Bold" 
+                                                   Foreground="#0E2F33"/>
+                                        <TextBlock Text="{Binding Subject}" 
+                                                   FontSize="11" 
+                                                   Foreground="#666" 
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Margin="0,4,0,0"/>
+                                        <TextBlock Text="{Binding CreatedAt, Converter={StaticResource DateTimeConverter}}" 
+                                                   FontSize="10" 
+                                                   Foreground="#999" 
+                                                   Margin="0,4,0,0"/>
+                                    </StackPanel>
+
+                                    <!-- Pending Badge -->
+                                    <Border Grid.Column="1" 
+                                            Background="#D95C5C" 
+                                            CornerRadius="10" 
+                                            Padding="6,2"
+                                            VerticalAlignment="Top"
+                                            Margin="8,0,0,0"
+                                            Visibility="{Binding HasUnreadMessages, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <TextBlock Text="Nuevo" 
+                                                   Foreground="White" 
+                                                   FontSize="10" 
+                                                   FontWeight="Bold"/>
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+            </Grid>
+
+            <!-- Chat Detail Area -->
+            <Border Grid.Column="1" Background="White" BorderBrush="#D4D1CA" BorderThickness="1" CornerRadius="4" Padding="15">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                <!-- No Chat Selected -->
+                <StackPanel Grid.Row="0" Grid.RowSpan="3" 
+                           VerticalAlignment="Center" 
+                           HorizontalAlignment="Center"
+                           Visibility="{Binding SelectedChat, Converter={StaticResource NullToVisibilityConverter}}">
+                    <TextBlock Text="Selecciona un chat para ver los detalles" 
+                               FontSize="16" 
+                               Foreground="#999" 
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Chat Header -->
+                <Border Grid.Row="0" 
+                       Padding="0,0,0,15" 
+                       BorderBrush="#E0E0E0" 
+                       BorderThickness="0,0,0,1"
+                       Visibility="{Binding SelectedChat, Converter={StaticResource NotNullToVisibilityConverter}}">
+                    <DockPanel LastChildFill="False">
+                        <StackPanel DockPanel.Dock="Left">
+                            <TextBlock Text="{Binding SelectedChat.ClientName}" 
+                                       FontSize="14" 
+                                       FontWeight="Bold" 
+                                       Foreground="#0E2F33"/>
+                            <TextBlock Text="{Binding SelectedChat.Subject}" 
+                                       FontSize="12" 
+                                       Foreground="#666" 
+                                       Margin="0,4,0,0"/>
+                        </StackPanel>
+
+                        <Button DockPanel.Dock="Right"
+                               Content="Cerrar Chat"
+                               Padding="12,6"
+                               Background="#D95C5C"
+                               Foreground="White"
+                               Command="{Binding CloseSelectedChatCommand}"/>
+                    </DockPanel>
+                </Border>
+
+                <!-- Chat Messages -->
+                <ListBox Grid.Row="1"
+                        ItemsSource="{Binding SelectedChatMessages}"
+                        Background="White"
+                        BorderThickness="0"
+                        Margin="0,15,0,15"
+                        Visibility="{Binding SelectedChat, Converter={StaticResource NotNullToVisibilityConverter}}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border Padding="10" Margin="0,4">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding SenderName}" 
+                                                  FontWeight="Bold" 
+                                                  Foreground="#0E2F33"
+                                                  FontSize="11"/>
+                                        <TextBlock Text="{Binding Message}" 
+                                                  Foreground="#333" 
+                                                  TextWrapping="Wrap"
+                                                  Margin="0,4,0,4"/>
+                                        <TextBlock Text="{Binding SentAt, Converter={StaticResource DateTimeConverter}}" 
+                                                  FontSize="10" 
+                                                  Foreground="#999"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Message Input -->
+                <Grid Grid.Row="2" 
+                     Visibility="{Binding SelectedChat, Converter={StaticResource NotNullToVisibilityConverter}}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" 
+                           Background="White"
+                           BorderBrush="#D4D1CA"
+                           BorderThickness="1"
+                           CornerRadius="4"
+                           Margin="0,0,10,0">
+                        <TextBox Text="{Binding NewMessageText, UpdateSourceTrigger=PropertyChanged}"
+                                Padding="10,8"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                TextWrapping="Wrap"
+                                AcceptsReturn="False"
+                                MaxHeight="60"
+                                VerticalScrollBarVisibility="Auto"/>
+                    </Border>
+
+                    <Button Grid.Column="1"
+                           Content="Enviar"
+                           Padding="14,8"
+                           Background="#01696F"
+                           Foreground="White"
+                           Command="{Binding SendMessageCommand}"/>
+                </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>
