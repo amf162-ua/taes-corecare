@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using System.Windows;
 using CoreCare.Services;
 using CoreCare.Models;
@@ -36,14 +38,31 @@ namespace CoreCare
                 var adminWindow = new AdminWindow();
                 Application.Current.MainWindow = adminWindow;
                 adminWindow.Show();
+                
+                // Close any other open windows
+                foreach (Window window in Application.Current.Windows.Cast<Window>().ToList())
+                {
+                    if (window != adminWindow)
+                    {
+                        window.Close();
+                    }
+                }
             }
             else
             {
                 var mainWindow = new MainWindow();
                 Application.Current.MainWindow = mainWindow;
                 mainWindow.Show();
+                
+                // Close any other open windows
+                foreach (Window window in Application.Current.Windows.Cast<Window>().ToList())
+                {
+                    if (window != mainWindow)
+                    {
+                        window.Close();
+                    }
+                }
             }
-            Close();
         }
 
         private void Register_Click(object sender, RoutedEventArgs e)
@@ -67,7 +86,15 @@ namespace CoreCare
                 var mainWindow = new MainWindow();
                 Application.Current.MainWindow = mainWindow;
                 mainWindow.Show();
-                Close();
+                
+                // Close any other open windows
+                foreach (Window window in Application.Current.Windows.Cast<Window>().ToList())
+                {
+                    if (window != mainWindow)
+                    {
+                        window.Close();
+                    }
+                }
             }
             catch (System.Exception ex)
             {
