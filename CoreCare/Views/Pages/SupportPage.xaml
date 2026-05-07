@@ -1,0 +1,170 @@
+<Page x:Class="CoreCare.Views.Pages.SupportPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="Centro de Soporte" Background="#0a0e1a" Foreground="#E4E8F0">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#151a2e" BorderBrush="#00FFFF" BorderThickness="0,0,0,2" Padding="30,20">
+            <DockPanel>
+                <Button DockPanel.Dock="Left" Content="← Volver" Click="BtnBack_Click" 
+                        Background="Transparent" Foreground="#00FFFF" BorderThickness="0" 
+                        FontSize="12" FontWeight="Bold" Cursor="Hand" Margin="0,0,20,0" />
+                <StackPanel>
+                    <TextBlock Text="💬 Centro de Soporte" Foreground="#00FFFF" FontSize="28" FontWeight="Bold" />
+                    <TextBlock Text="Gestiona tus tickets de soporte" Foreground="#A8B0C0" FontSize="12" Margin="0,5,0,0" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="350" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: Chats List & Create New -->
+            <Grid Grid.Column="0" Background="#1C2030" Margin="0,0,1,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Create New Chat Section -->
+                <Border Grid.Row="0" Background="#151a2e" BorderBrush="#00FFFF" BorderThickness="0,0,0,1" Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="Nuevo Ticket" Foreground="#00FFFF" FontSize="14" FontWeight="Bold" Margin="0,0,0,10" />
+                        
+                        <TextBlock Text="Asunto" Foreground="#E4E8F0" FontSize="10" FontWeight="Bold" Margin="0,0,0,3" />
+                        <Border Background="#0F1419" BorderBrush="#00FFFF" BorderThickness="1" CornerRadius="4" Padding="1" Margin="0,0,0,8">
+                            <TextBox Background="#0F1419" Foreground="#E4E8F0" BorderThickness="0" Padding="6" Height="28"
+                                     Text="{Binding ChatSubject, UpdateSourceTrigger=PropertyChanged}" />
+                        </Border>
+                        
+                        <TextBlock Text="Descripción" Foreground="#E4E8F0" FontSize="10" FontWeight="Bold" Margin="0,0,0,3" />
+                        <Border Background="#0F1419" BorderBrush="#00FFFF" BorderThickness="1" CornerRadius="4" Padding="1" Margin="0,0,0,8">
+                            <TextBox Background="#0F1419" Foreground="#E4E8F0" BorderThickness="0" Padding="6" Height="70"
+                                     AcceptsReturn="True" TextWrapping="Wrap"
+                                     Text="{Binding ChatMessage, UpdateSourceTrigger=PropertyChanged}" />
+                        </Border>
+
+                        <Button Content="Crear" Command="{Binding CreateChatCommand}" 
+                                Background="#00FFFF" Foreground="#030213" FontWeight="Bold" 
+                                Padding="8,6" Height="32" Cursor="Hand">
+                            <Button.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="4"/>
+                                </Style>
+                            </Button.Resources>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- Chats List Header -->
+                <TextBlock Grid.Row="1" Text="Mis Tickets" Foreground="#00FFFF" FontSize="13" FontWeight="Bold" 
+                           Padding="15,10,15,8" Background="#0F1419" />
+
+                <!-- Chats List -->
+                <ListBox Grid.Row="2" ItemsSource="{Binding UserChats}" 
+                         SelectedItem="{Binding SelectedChat}"
+                         Background="Transparent" BorderThickness="0" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="Transparent" Padding="8" Margin="0">
+                                <Border Background="#151a2e" BorderBrush="#3300FFFF" BorderThickness="1" 
+                                        CornerRadius="6" Padding="10" Cursor="Hand">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Chat.Subject}" Foreground="#00FFFF" 
+                                                   FontWeight="Bold" FontSize="11" />
+                                        <TextBlock Foreground="#717182" FontSize="9" Margin="0,3,0,0">
+                                            <TextBlock.Text>
+                                                <Binding Path="Chat.CreatedAt" StringFormat="dd/MM/yyyy HH:mm"/>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+
+            <!-- Right: Chat Detail -->
+            <Border Grid.Column="1" Background="#0F1419">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Chat Header -->
+                    <Border Grid.Row="0" Background="#151a2e" BorderBrush="#3300FFFF" BorderThickness="0,0,0,1" Padding="20">
+                        <TextBlock Foreground="#00FFFF" FontSize="14" FontWeight="Bold">
+                            <TextBlock.Text>
+                                <Binding Path="SelectedChat.Chat.Subject" StringFormat="Ticket: {0}" FallbackValue="Selecciona un ticket"/>
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </Border>
+
+                    <!-- Messages Area -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="20">
+                        <ItemsControl ItemsSource="{Binding SelectedChat.Messages}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,10" Padding="12" CornerRadius="12" 
+                                            Background="#1C2030" BorderBrush="#00FFFF" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Message.Message}" Foreground="#E4E8F0" 
+                                                       FontSize="12" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding SenderName}" 
+                                                       Foreground="#717182" FontSize="9" Margin="0,5,0,0" />
+                                            <TextBlock Foreground="#717182" FontSize="9">
+                                                <TextBlock.Text>
+                                                    <Binding Path="Message.SentAt" StringFormat="HH:mm"/>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <!-- Message Input Area -->
+                    <Border Grid.Row="2" Background="#151a2e" BorderBrush="#3300FFFF" BorderThickness="0,1,0,0" Padding="15">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0" Background="#0F1419" BorderBrush="#00FFFF" BorderThickness="1" CornerRadius="20" Padding="1">
+                                <TextBox Background="#0F1419" Foreground="#E4E8F0" BorderThickness="0" Padding="12,8" 
+                                         AcceptsReturn="True" TextWrapping="Wrap" Height="40"
+                                         Text="{Binding ClientMessageInput, UpdateSourceTrigger=PropertyChanged}" />
+                            </Border>
+
+                            <Button Grid.Column="1" Content="Enviar" Margin="10,0,0,0" Height="40" Width="80"
+                                    Background="#00FFFF" Foreground="#030213" FontWeight="Bold" Cursor="Hand"
+                                    Command="{Binding SendClientMessageCommand}">
+                                <Button.Resources>
+                                    <Style TargetType="Border">
+                                        <Setter Property="CornerRadius" Value="20"/>
+                                    </Style>
+                                </Button.Resources>
+                            </Button>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>

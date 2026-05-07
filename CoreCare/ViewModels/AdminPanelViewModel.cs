@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Microsoft.EntityFrameworkCore;
@@ -161,8 +162,13 @@ namespace CoreCare.ViewModels
             {
                 Chats.Clear();
                 
+                // Recreate context to prevent connection issues
+                _db?.Dispose();
+                _db = new CoreCareDbContext();
+                
                 // Single query with all eager loading to prevent null references
                 var openChats = _db.Chats
+                    .AsNoTracking()
                     .Include(c => c.Client)
                     .Include(c => c.Messages)
                         .ThenInclude(m => m.Sender)
@@ -172,33 +178,47 @@ namespace CoreCare.ViewModels
 
                 foreach (var chat in openChats)
                 {
-                    var chatVm = new ChatViewModel
+                    try
                     {
-                        Chat = chat,
-                        HasUnreadMessages = DetectUnreadMessages(chat, chat.Messages?.ToList() ?? new List<ChatMessage>())
-                    };
-
-                    // Use the already-loaded Messages from the chat
-                    if (chat.Messages != null)
-                    {
-                        foreach (var msg in chat.Messages.OrderBy(m => m.SentAt))
+                        var chatVm = new ChatViewModel
                         {
-                            chatVm.Messages.Add(new ChatMessageViewModel
-                            {
-                                Message = msg,
-                                SenderName = msg.Sender?.name ?? "Unknown",
-                                IsAdmin = msg.Sender?.Role == UserRole.Administrador
-                            });
-                        }
-                    }
+                            Chat = chat,
+                            HasUnreadMessages = DetectUnreadMessages(chat, chat.Messages?.ToList() ?? new List<ChatMessage>())
+                        };
 
-                    Chats.Add(chatVm);
+                        // Use the already-loaded Messages from the chat
+                        if (chat.Messages != null)
+                        {
+                            foreach (var msg in chat.Messages.OrderBy(m => m.SentAt))
+                            {
+                                try
+                                {
+                                    chatVm.Messages.Add(new ChatMessageViewModel
+                                    {
+                                        Message = msg,
+                                        SenderName = msg.Sender?.name ?? "Unknown",
+                                        IsAdmin = msg.Sender?.Role == UserRole.Administrador
+                                    });
+                                }
+                                catch (Exception msgEx)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"ERROR adding message to VM: {msgEx}");
+                                }
+                            }
+                        }
+
+                        Chats.Add(chatVm);
+                    }
+                    catch (Exception chatEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"ERROR processing chat: {chatEx}");
+                    }
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"ERROR in LoadChats: {ex}");
-                Console.WriteLine($"Error loading chats: {ex.Message}\n{ex.StackTrace}");
+                MessageBox.Show($"Error al cargar chats: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -295,21 +315,37 @@ namespace CoreCare.ViewModels
 
             try
             {
-                var chat = _db.Chats.FirstOrDefault(c => c.Id == SelectedChat.Chat.Id);
-                if (chat == null) return;
+                var currentChatId = SelectedChat.Chat.Id;
+                var messageText = MessageInput;
 
-                var currentUser = SessionService.CurrentUser;
-
-                var newMessage = new ChatMessage
+                // Use a fresh context for this operation
+                using (var freshDb = new CoreCareDbContext())
                 {
-                    ChatId = chat.Id,
-                    SenderId = currentUser.Id,
-                    Message = MessageInput,
-                    SentAt = DateTime.UtcNow
-                };
+                    var chat = freshDb.Chats.FirstOrDefault(c => c.Id == currentChatId);
+                    if (chat == null)
+                    {
+                        MessageBox.Show("El chat no existe.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
 
-                _db.ChatMessages.Add(newMessage);
-                _db.SaveChanges();
+                    var currentUser = SessionService.CurrentUser;
+                    if (currentUser == null)
+                    {
+                        MessageBox.Show("Sesión expirada.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    var newMessage = new ChatMessage
+                    {
+                        ChatId = chat.Id,
+                        SenderId = currentUser.Id,
+                        Message = messageText,
+                        SentAt = DateTime.UtcNow
+                    };
+
+                    freshDb.ChatMessages.Add(newMessage);
+                    freshDb.SaveChanges();
+                }
 
                 MessageInput = "";
                 LoadChats();
@@ -317,7 +353,8 @@ namespace CoreCare.ViewModels
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error sending message: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"ERROR sending message: {ex}");
+                MessageBox.Show($"Error al enviar mensaje: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -485,26 +522,5 @@ namespace CoreCare.ViewModels
             _pollTimer?.Stop();
             _db?.Dispose();
         }
-    }
-
-    public class RelayCommand : ICommand
-    {
-        private readonly Action<object> _execute;
-        private readonly Func<object, bool> _canExecute;
-
-        public event EventHandler CanExecuteChanged
-        {
-            add { CommandManager.RequerySuggested += value; }
-            remove { CommandManager.RequerySuggested -= value; }
-        }
-
-        public RelayCommand(Action<object> execute, Func<object, bool> canExecute = null)
-        {
-            _execute = execute;
-            _canExecute = canExecute ?? (_ => true);
-        }
-
-        public bool CanExecute(object parameter) => _canExecute(parameter);
-        public void Execute(object parameter) => _execute(parameter);
     }
 }

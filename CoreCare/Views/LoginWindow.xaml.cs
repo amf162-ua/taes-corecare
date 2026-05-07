@@ -25,6 +25,10 @@ namespace CoreCare
             }
 
             SessionService.SignIn(user);
+            
+            // Update global app state
+            App.IsUserLoggedIn = true;
+            App.CurrentUsername = user.name ?? user.username;
 
             // Redirect admins to AdminPanel, regular users to MainWindow
             if (user.Role == UserRole.Administrador)
@@ -55,6 +59,10 @@ namespace CoreCare
                     RegisterPasswordBox.Password);
 
                 SessionService.SignIn(user);
+                
+                // Update global app state
+                App.IsUserLoggedIn = true;
+                App.CurrentUsername = user.name ?? user.username;
 
                 var mainWindow = new MainWindow();
                 Application.Current.MainWindow = mainWindow;

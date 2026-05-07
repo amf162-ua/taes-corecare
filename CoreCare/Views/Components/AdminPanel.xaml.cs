@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Controls;
 using CoreCare.ViewModels;
 
@@ -17,6 +18,12 @@ namespace CoreCare.Views.Components
         private void UserControl_Unloaded(object sender, System.Windows.RoutedEventArgs e)
         {
             _viewModel?.Dispose();
+        }
+
+        private void BtnCloseAdmin_Click(object sender, RoutedEventArgs e)
+        {
+            var adminWindow = Window.GetWindow(this);
+            adminWindow?.Close();
         }
     }
 }

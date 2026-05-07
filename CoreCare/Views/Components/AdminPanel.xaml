@@ -18,10 +18,15 @@
 
         <!-- Header -->
         <Border Grid.Row="0" Background="#151a2e" BorderBrush="#3300FFFF" BorderThickness="0,0,0,1" Padding="20,0">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="ADMIN PANEL" Foreground="Cyan" FontSize="20" FontWeight="Black" VerticalAlignment="Center"/>
-                <TextBlock Text=" - Sistema de Gestión" Foreground="#E4E8F0" FontSize="16" VerticalAlignment="Center" Margin="10,0,0,0"/>
-            </StackPanel>
+            <DockPanel VerticalAlignment="Center">
+                <Button DockPanel.Dock="Right" x:Name="BtnCloseAdmin" Click="BtnCloseAdmin_Click"
+                        Content="Salir" Foreground="#FF5555" Background="Transparent" 
+                        BorderThickness="0" FontSize="12" FontWeight="Bold" Cursor="Hand" />
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="ADMIN PANEL" Foreground="Cyan" FontSize="20" FontWeight="Black" VerticalAlignment="Center"/>
+                    <TextBlock Text=" - Sistema de Gestión" Foreground="#E4E8F0" FontSize="16" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                </StackPanel>
+            </DockPanel>
         </Border>
 
         <!-- Tab Control -->
