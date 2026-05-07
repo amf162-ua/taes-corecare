@@ -95,9 +95,15 @@
 
                     <!-- Right Panel: Chat Detail -->
                     <Border Grid.Column="1" Background="#0A0E1A" Padding="20">
-                        <DockPanel>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
                             <!-- Chat Header -->
-                            <Border DockPanel.Dock="Top" Background="#1C2030" CornerRadius="8" Padding="15" Margin="0,0,0,15">
+                            <Border Grid.Row="0" Background="#1C2030" CornerRadius="8" Padding="15" Margin="0,0,0,15">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -126,15 +132,15 @@
                             </Border>
 
                             <!-- Messages View -->
-                            <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto" Margin="0,0,0,15" MaxHeight="400">
+                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,0,0,15">
                                 <ItemsControl ItemsSource="{Binding SelectedChat.Messages, FallbackValue=''}" Background="Transparent">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Border Margin="0,8" Background="Transparent">
-                                                <Grid>
+                                                <Grid Margin="0">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" MaxWidth="400" />
+                                                        <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
 
                                                     <!-- Client Message (Left) -->
@@ -142,7 +148,8 @@
                                                             Background="#1C2030" 
                                                             CornerRadius="12" 
                                                             Padding="12"
-                                                            Margin="0,0,auto,0"
+                                                            HorizontalAlignment="Left"
+                                                            MaxWidth="420"
                                                             BorderBrush="#00FF00" 
                                                             BorderThickness="1"
                                                             Visibility="{Binding IsAdmin, Converter={StaticResource InverseBoolToVisibilityConverter}}">
@@ -168,7 +175,8 @@
                                                             Background="#00FFFF" 
                                                             CornerRadius="12" 
                                                             Padding="12"
-                                                            Margin="auto,0,0,0"
+                                                            HorizontalAlignment="Right"
+                                                            MaxWidth="420"
                                                             Visibility="{Binding IsAdmin, Converter={StaticResource BoolToVisibilityConverter}}">
                                                         <StackPanel>
                                                             <TextBlock Text="{Binding SenderName}" 
@@ -195,7 +203,7 @@
                             </ScrollViewer>
 
                             <!-- Message Input -->
-                            <Grid DockPanel.Dock="Bottom">
+                            <Grid Grid.Row="2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
@@ -207,6 +215,9 @@
                                          Foreground="#E4E8F0"
                                          BorderBrush="#3300FFFF"
                                          BorderThickness="1"
+                                         Height="42"
+                                         VerticalAlignment="Center"
+                                         Padding="10,8"
                                          Margin="0,0,10,0" />
 
                                 <Button Grid.Column="1" 
@@ -215,9 +226,10 @@
                                         Background="#030213" 
                                         Foreground="Cyan"
                                         Padding="20,8" 
+                                        VerticalAlignment="Center"
                                         Cursor="Hand" />
                             </Grid>
-                        </DockPanel>
+                        </Grid>
                     </Border>
                 </Grid>
             </TabItem>

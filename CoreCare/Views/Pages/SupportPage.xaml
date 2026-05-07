@@ -80,15 +80,35 @@
                             <Border Background="Transparent" Padding="8" Margin="0">
                                 <Border Background="#151a2e" BorderBrush="#3300FFFF" BorderThickness="1" 
                                         CornerRadius="6" Padding="10" Cursor="Hand">
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding Chat.Subject}" Foreground="#00FFFF" 
-                                                   FontWeight="Bold" FontSize="11" />
-                                        <TextBlock Foreground="#717182" FontSize="9" Margin="0,3,0,0">
-                                            <TextBlock.Text>
-                                                <Binding Path="Chat.CreatedAt" StringFormat="dd/MM/yyyy HH:mm"/>
-                                            </TextBlock.Text>
-                                        </TextBlock>
-                                    </StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{Binding Chat.Subject}" Foreground="#00FFFF" 
+                                                       FontWeight="Bold" FontSize="11" />
+                                            <TextBlock Foreground="#717182" FontSize="9" Margin="0,3,0,0">
+                                                <TextBlock.Text>
+                                                    <Binding Path="Chat.CreatedAt" StringFormat="dd/MM/yyyy HH:mm"/>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </StackPanel>
+
+                                        <Border Grid.Column="1"
+                                                Background="#00FFFF"
+                                                CornerRadius="999"
+                                                Padding="8,3"
+                                                Margin="10,0,0,0"
+                                                VerticalAlignment="Center"
+                                                Visibility="{Binding HasUnreadMessages, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <TextBlock Text="{Binding UnreadMessagesCount}" 
+                                                       Foreground="#030213" 
+                                                       FontSize="10" 
+                                                       FontWeight="Bold" />
+                                        </Border>
+                                    </Grid>
                                 </Border>
                             </Border>
                         </DataTemplate>
@@ -119,20 +139,45 @@
                         <ItemsControl ItemsSource="{Binding SelectedChat.Messages}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Margin="0,10" Padding="12" CornerRadius="12" 
-                                            Background="#1C2030" BorderBrush="#00FFFF" BorderThickness="1">
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding Message.Message}" Foreground="#E4E8F0" 
-                                                       FontSize="12" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding SenderName}" 
-                                                       Foreground="#717182" FontSize="9" Margin="0,5,0,0" />
-                                            <TextBlock Foreground="#717182" FontSize="9">
-                                                <TextBlock.Text>
-                                                    <Binding Path="Message.SentAt" StringFormat="HH:mm"/>
-                                                </TextBlock.Text>
-                                            </TextBlock>
-                                        </StackPanel>
-                                    </Border>
+                                    <Grid Margin="0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Admin Reply (Left) -->
+                                        <Border Grid.Column="0"
+                                                Background="#1C2030"
+                                                BorderBrush="#00FF00"
+                                                BorderThickness="1"
+                                                CornerRadius="12"
+                                                Padding="12"
+                                                HorizontalAlignment="Left"
+                                                MaxWidth="420"
+                                                Visibility="{Binding IsAdmin, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding SenderName}" Foreground="#00FF00" FontSize="10" FontWeight="Bold" />
+                                                <TextBlock Text="{Binding Message.Message}" Foreground="#E4E8F0" FontSize="12" TextWrapping="Wrap" Margin="0,5,0,0" />
+                                                <TextBlock Text="{Binding Message.SentAt, StringFormat=HH:mm}" Foreground="#717182" FontSize="9" Margin="0,3,0,0" />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Client Message (Right) -->
+                                        <Border Grid.Column="1"
+                                                Background="#00FFFF"
+                                                BorderThickness="0"
+                                                CornerRadius="12"
+                                                Padding="12"
+                                                HorizontalAlignment="Right"
+                                                MaxWidth="420"
+                                                Visibility="{Binding IsAdmin, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding SenderName}" Foreground="#030213" FontSize="10" FontWeight="Bold" />
+                                                <TextBlock Text="{Binding Message.Message}" Foreground="#030213" FontSize="12" TextWrapping="Wrap" Margin="0,5,0,0" />
+                                                <TextBlock Text="{Binding Message.SentAt, StringFormat=HH:mm}" Foreground="#030213" FontSize="9" Margin="0,3,0,0" Opacity="0.7" />
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>

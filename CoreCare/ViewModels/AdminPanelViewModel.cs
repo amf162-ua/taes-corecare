@@ -13,15 +13,63 @@ using CoreCare.Services;
 
 namespace CoreCare.ViewModels
 {
-    public class ChatViewModel
+    public class ChatViewModel : INotifyPropertyChanged
     {
-        public Chat Chat { get; set; }
+        private Chat _chat;
+        private bool _hasUnreadMessages;
+        private int _unreadMessagesCount;
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        public Chat Chat
+        {
+            get => _chat;
+            set
+            {
+                if (_chat == value)
+                {
+                    return;
+                }
+
+                _chat = value;
+                OnPropertyChanged(nameof(Chat));
+            }
+        }
+
         public ObservableCollection<ChatMessageViewModel> Messages { get; set; }
-        public bool HasUnreadMessages { get; set; }
+        public bool HasUnreadMessages
+        {
+            get => _hasUnreadMessages;
+            set => SetUnreadState(value ? 1 : 0);
+        }
+
+        public int UnreadMessagesCount
+        {
+            get => _unreadMessagesCount;
+            set => SetUnreadState(value);
+        }
 
         public ChatViewModel()
         {
             Messages = new ObservableCollection<ChatMessageViewModel>();
+        }
+
+        private void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private void SetUnreadState(int unreadMessagesCount)
+        {
+            if (_unreadMessagesCount == unreadMessagesCount)
+            {
+                return;
+            }
+
+            _unreadMessagesCount = Math.Max(0, unreadMessagesCount);
+            _hasUnreadMessages = _unreadMessagesCount > 0;
+            OnPropertyChanged(nameof(UnreadMessagesCount));
+            OnPropertyChanged(nameof(HasUnreadMessages));
         }
     }
 
@@ -160,6 +208,9 @@ namespace CoreCare.ViewModels
         {
             try
             {
+                var selectedChatId = SelectedChat?.Chat?.Id;
+                var selectedChatVm = SelectedChat;
+
                 Chats.Clear();
                 
                 // Recreate context to prevent connection issues
@@ -180,11 +231,13 @@ namespace CoreCare.ViewModels
                 {
                     try
                     {
-                        var chatVm = new ChatViewModel
-                        {
-                            Chat = chat,
-                            HasUnreadMessages = DetectUnreadMessages(chat, chat.Messages?.ToList() ?? new List<ChatMessage>())
-                        };
+                        var chatVm = selectedChatVm != null && chat.Id == selectedChatId
+                            ? selectedChatVm
+                            : new ChatViewModel();
+
+                        chatVm.Chat = chat;
+                        chatVm.UnreadMessagesCount = CountUnreadMessages(chat.Messages?.ToList() ?? new List<ChatMessage>());
+                        chatVm.Messages.Clear();
 
                         // Use the already-loaded Messages from the chat
                         if (chat.Messages != null)
@@ -214,6 +267,20 @@ namespace CoreCare.ViewModels
                         System.Diagnostics.Debug.WriteLine($"ERROR processing chat: {chatEx}");
                     }
                 }
+
+                if (selectedChatId.HasValue)
+                {
+                    var refreshedSelectedChat = Chats.FirstOrDefault(chat => chat.Chat.Id == selectedChatId.Value);
+                    if (!ReferenceEquals(SelectedChat, refreshedSelectedChat))
+                    {
+                        SelectedChat = refreshedSelectedChat;
+                    }
+                    else
+                    {
+                        OnPropertyChanged(nameof(SelectedChat));
+                        CommandManager.InvalidateRequerySuggested();
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -222,34 +289,24 @@ namespace CoreCare.ViewModels
             }
         }
 
-        private bool DetectUnreadMessages(Chat chat, List<ChatMessage> messages)
+        private int CountUnreadMessages(List<ChatMessage> messages)
         {
-            if (messages.Count == 0)
-            {
-                return false;
-            }
+            if (messages.Count == 0) return 0;
 
-            var lastClientMessage = messages
-                .Where(message => message.Sender?.Role == UserRole.Cliente)
-                .OrderByDescending(message => message.SentAt)
-                .FirstOrDefault();
-
-            var lastAdminMessage = messages
+            var lastAdminReplyAt = messages
                 .Where(message => message.Sender?.Role == UserRole.Administrador)
                 .OrderByDescending(message => message.SentAt)
+                .Select(message => message.SentAt)
                 .FirstOrDefault();
 
-            if (lastClientMessage == null)
+            if (lastAdminReplyAt == default)
             {
-                return false;
+                return messages.Count(message => message.Sender?.Role == UserRole.Cliente);
             }
 
-            if (lastAdminMessage == null)
-            {
-                return true;
-            }
-
-            return lastClientMessage.SentAt > lastAdminMessage.SentAt;
+            return messages.Count(message =>
+                message.Sender?.Role == UserRole.Cliente &&
+                message.SentAt > lastAdminReplyAt);
         }
 
         private void LoadUsers()

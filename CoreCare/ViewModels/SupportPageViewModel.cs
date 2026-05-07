@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Microsoft.EntityFrameworkCore;
 using CoreCare.Data;
 using CoreCare.Models;
@@ -14,16 +16,17 @@ namespace CoreCare.ViewModels
     public class SupportPageViewModel : INotifyPropertyChanged
     {
         private CoreCareDbContext _db;
+        private DispatcherTimer _pollTimer;
         private string _chatSubject;
         private string _chatMessage;
-    private string _clientMessageInput;
-    private ChatViewModel _selectedChat;
+        private string _clientMessageInput;
+        private ChatViewModel _selectedChat;
 
-    public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler PropertyChanged;
 
-    public ObservableCollection<ChatViewModel> UserChats { get; set; }
-    public ICommand CreateChatCommand { get; private set; }
-    public ICommand SendClientMessageCommand { get; private set; }
+        public ObservableCollection<ChatViewModel> UserChats { get; set; }
+        public ICommand CreateChatCommand { get; private set; }
+        public ICommand SendClientMessageCommand { get; private set; }
 
     public string ChatSubject
     {
@@ -68,6 +71,10 @@ namespace CoreCare.ViewModels
         {
             if (_selectedChat == value) return;
             _selectedChat = value;
+            if (_selectedChat != null)
+            {
+                _selectedChat.UnreadMessagesCount = 0;
+            }
             OnPropertyChanged(nameof(SelectedChat));
         }
     }
@@ -81,76 +88,88 @@ namespace CoreCare.ViewModels
         CreateChatCommand = new RelayCommand(CreateChat, CanCreateChat);
         SendClientMessageCommand = new RelayCommand(SendClientMessage, CanSendClientMessage);
         LoadUserChats();
+        StartPolling();
     }
 
     private void LoadUserChats()
+    {
+        try
         {
-            try
+            var selectedChatId = SelectedChat?.Chat?.Id;
+            var selectedChatVm = SelectedChat;
+
+            UserChats.Clear();
+            var currentUser = SessionService.CurrentUser;
+            if (currentUser == null) return;
+
+            var userChats = _db.Chats
+                .AsNoTracking()
+                .Include(c => c.Client)
+                .Include(c => c.Messages)
+                    .ThenInclude(m => m.Sender)
+                .Where(c => c.ClientId == currentUser.Id && c.Status == ChatStatus.Abierto)
+                .OrderByDescending(c => c.CreatedAt)
+                .ToList();
+
+            foreach (var chat in userChats)
             {
-                UserChats.Clear();
-                var currentUser = SessionService.CurrentUser;
-                if (currentUser == null) return;
+                var chatVm = selectedChatVm != null && chat.Id == selectedChatId
+                    ? selectedChatVm
+                    : new ChatViewModel();
 
-                var userChats = _db.Chats
-                    .Include(c => c.Client)
-                    .Include(c => c.Messages)
-                        .ThenInclude(m => m.Sender)
-                    .Where(c => c.ClientId == currentUser.Id && c.Status == ChatStatus.Abierto)
-                    .OrderByDescending(c => c.CreatedAt)
-                    .ToList();
+                chatVm.Chat = chat;
+                chatVm.Messages.Clear();
+                chatVm.UnreadMessagesCount = chat.Id == selectedChatId
+                    ? 0
+                    : CountUnreadAdminReplies(chat.Messages?.ToList() ?? new List<ChatMessage>());
 
-                foreach (var chat in userChats)
+                if (chat.Messages != null)
                 {
-                    var chatVm = new ChatViewModel
+                    foreach (var msg in chat.Messages.OrderBy(m => m.SentAt))
                     {
-                        Chat = chat,
-                        HasUnreadMessages = DetectUnreadMessages(chat, chat.Messages?.ToList() ?? new List<ChatMessage>())
-                    };
-
-                    if (chat.Messages != null)
-                    {
-                        foreach (var msg in chat.Messages.OrderBy(m => m.SentAt))
+                        chatVm.Messages.Add(new ChatMessageViewModel
                         {
-                            chatVm.Messages.Add(new ChatMessageViewModel
-                            {
-                                Message = msg,
-                                SenderName = msg.Sender?.name ?? "Unknown",
-                                IsAdmin = msg.Sender?.Role == UserRole.Administrador
-                            });
-                        }
+                            Message = msg,
+                            SenderName = msg.Sender?.name ?? "Unknown",
+                            IsAdmin = msg.Sender?.Role == UserRole.Administrador
+                        });
                     }
-
-                    UserChats.Add(chatVm);
                 }
 
-                OnPropertyChanged(nameof(HasNoChats));
+                UserChats.Add(chatVm);
             }
-            catch (Exception ex)
+
+            if (selectedChatId.HasValue)
             {
-                System.Diagnostics.Debug.WriteLine($"ERROR loading user chats: {ex}");
-                Console.WriteLine($"Error loading user chats: {ex.Message}");
+                SelectedChat = UserChats.FirstOrDefault(chat => chat.Chat.Id == selectedChatId.Value);
             }
-        }
 
-        private bool DetectUnreadMessages(Chat chat, List<ChatMessage> messages)
+            OnPropertyChanged(nameof(HasNoChats));
+        }
+        catch (Exception ex)
         {
-            if (messages.Count == 0) return false;
-
-            var lastClientMessage = messages
-                .Where(m => m.Sender?.Role == UserRole.Cliente)
-                .OrderByDescending(m => m.SentAt)
-                .FirstOrDefault();
-
-            var lastAdminMessage = messages
-                .Where(m => m.Sender?.Role == UserRole.Administrador)
-                .OrderByDescending(m => m.SentAt)
-                .FirstOrDefault();
-
-            if (lastClientMessage == null) return false;
-            if (lastAdminMessage == null) return true;
-
-            return lastClientMessage.SentAt > lastAdminMessage.SentAt;
+            System.Diagnostics.Debug.WriteLine($"ERROR loading user chats: {ex}");
+            Console.WriteLine($"Error loading user chats: {ex.Message}");
         }
+    }
+
+    private int CountUnreadAdminReplies(List<ChatMessage> messages)
+    {
+        if (messages.Count == 0)
+        {
+            return 0;
+        }
+
+        var lastClientMessageTime = messages
+            .Where(message => message.Sender?.Role == UserRole.Cliente)
+            .Select(message => message.SentAt)
+            .DefaultIfEmpty(DateTime.MinValue)
+            .Max();
+
+        return messages.Count(message =>
+            message.Sender?.Role == UserRole.Administrador &&
+            message.SentAt > lastClientMessageTime);
+    }
 
         private void CreateChat(object parameter)
         {
@@ -249,6 +268,28 @@ namespace CoreCare.ViewModels
         private void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private void StartPolling()
+        {
+            _pollTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(3)
+            };
+
+            _pollTimer.Tick += (sender, args) =>
+            {
+                try
+                {
+                    LoadUserChats();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ERROR in support polling: {ex}");
+                }
+            };
+
+            _pollTimer.Start();
         }
     }
 }
