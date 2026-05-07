@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:components="clr-namespace:CoreCare.Views.Components"
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="800">
 
@@ -33,6 +34,16 @@
     </UserControl.Resources>
 
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Header -->
+        <components:Header Grid.Row="0"/>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1">
         <Grid.Background>
             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                 <GradientStop Offset="0" Color="#0A0E1A"/>
@@ -177,5 +188,7 @@
 
             </StackPanel>
         </ScrollViewer>
-    </Grid>
+        </Grid>
+        <!-- End Main Content -->
+        </Grid>
 </UserControl>

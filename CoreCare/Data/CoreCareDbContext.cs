@@ -19,6 +19,8 @@ namespace CoreCare.Data
         public DbSet<User> Users { get; set; }
         public DbSet<RegistroBenchmark> RegistrosBenchmark { get; set; }
         public DbSet<SensorReading> SensorReadings { get; set; }
+        public DbSet<Chat> Chats { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
@@ -66,6 +68,25 @@ namespace CoreCare.Data
             modelBuilder.Entity<User>()
                 .Property(u => u.Plan)
                 .HasConversion<string>();
+
+            // Chat relationships
+            modelBuilder.Entity<Chat>()
+                .HasOne(c => c.Client)
+                .WithMany()
+                .HasForeignKey(c => c.ClientId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(m => m.Chat)
+                .WithMany(c => c.Messages)
+                .HasForeignKey(m => m.ChatId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(m => m.Sender)
+                .WithMany()
+                .HasForeignKey(m => m.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
 
     }

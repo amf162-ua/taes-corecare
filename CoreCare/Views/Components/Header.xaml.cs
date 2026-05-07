@@ -20,6 +20,7 @@ namespace CoreCare.Views.Components
                 GuestPanel.Visibility = Visibility.Collapsed;
                 UserPanel.Visibility = Visibility.Visible;
                 BtnPremium.Visibility = Visibility.Visible; // Mostramos premium
+                BtnSupport.Visibility = Visibility.Visible; // Mostrar soporte para usuarios logueados
                 TxtUsername.Text = App.CurrentUsername.ToUpper();
             }
             else
@@ -27,6 +28,7 @@ namespace CoreCare.Views.Components
                 GuestPanel.Visibility = Visibility.Visible;
                 UserPanel.Visibility = Visibility.Collapsed;
                 BtnPremium.Visibility = Visibility.Collapsed; // Ocultamos premium
+                BtnSupport.Visibility = Visibility.Collapsed; // Ocultar soporte para no logueados
             }
         }
 
@@ -46,6 +48,12 @@ namespace CoreCare.Views.Components
         {
             var win = Window.GetWindow(this) as MainWindow;
             win?.MainContentArea.Navigate(new HistoryPage());
+        }
+
+        private void BtnSupport_Click(object sender, RoutedEventArgs e)
+        {
+            var win = Window.GetWindow(this) as MainWindow;
+            win?.MainContentArea.Navigate(new SupportPage());
         }
 
         private void BtnLogin_Click(object sender, RoutedEventArgs e)
