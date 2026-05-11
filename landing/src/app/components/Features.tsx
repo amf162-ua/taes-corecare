@@ -36,13 +36,15 @@ const features = [
 
 export function Features() {
   return (
-    <section className="pt-56 pb-32 px-6 relative -mt-32">
+    /* He usado pt-4 para subirlo al máximo y overflow-visible para evitar cortes */
+    <section className="pt-4 pb-32 px-6 relative overflow-visible">
       <div className="absolute inset-0 bg-gradient-to-b from-[#2d1b4e] to-[#0f0718]" />
 
       <div className="relative z-10 max-w-7xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl mb-4 bg-gradient-to-r from-white to-purple-300 bg-clip-text text-transparent">
-            ¿Por qué elegirnos?
+          {/* mb-8 separa el título de la frase de abajo; py-2 evita que el degradado se corte */}
+          <h2 className="text-4xl md:text-5xl mb-8 bg-gradient-to-r from-white to-purple-300 bg-clip-text text-transparent py-2">
+            ¿Por qué elegirnos? 
           </h2>
           <p className="text-xl text-gray-400 max-w-2xl mx-auto">
             La combinación perfecta entre tecnología de benchmarking y análisis con IA
