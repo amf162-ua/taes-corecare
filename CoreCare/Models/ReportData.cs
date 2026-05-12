@@ -10,10 +10,21 @@ namespace CoreCare.Models
         public string ClientName { get; set; } = string.Empty;
         public DateTime ReportDate { get; set; }
 
+        // Especificaciones del hardware
+        public SystemSpecs SystemSpecs { get; set; } = new SystemSpecs();
+
         // Datos del sistema analizado
         public SystemTelemetryMock TelemetryData { get; set; } = new SystemTelemetryMock();
 
         // Recomendaciones (hasta este el Parser, lo simularemos con strings)
         public List<string> Recommendations { get; set; } = new List<string>();
+
+        public List<string> TelemetryWarnings { get; set; } = new List<string>();
+
+        public bool RecommendationsGeneratedLocally { get; set; }
+
+        public List<ComponentScore> UpgradeScores { get; set; } = new();
+
+        public List<UpgradeRecommendation> UpgradeRecommendations { get; set; } = new();
     }
 }

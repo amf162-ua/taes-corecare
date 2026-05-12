@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.ComponentModel.DataAnnotations.Schema;
 
 //para guardar y consultar el historial de rendimiento del equipo a lo largo del tiempo.
 namespace CoreCare.Models
@@ -22,5 +23,11 @@ namespace CoreCare.Models
         public float Score { get; set; }
         public int UserId { get; set; }
         public User User { get; set; } = null!;
+
+        [NotMapped]
+        public string? RunLabel { get; set; }
+
+        // Relación con lecturas detalladas de sensores
+        public ICollection<SensorReading> SensorReadings { get; set; } = new List<SensorReading>();
     }
 }

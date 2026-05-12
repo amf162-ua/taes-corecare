@@ -15,7 +15,64 @@ namespace CoreCare.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
+            modelBuilder.HasAnnotation("ProductVersion", "9.0.2");
+
+            modelBuilder.Entity("CoreCare.Models.Chat", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ClientId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.ToTable("Chats");
+                });
+
+            modelBuilder.Entity("CoreCare.Models.ChatMessage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ChatId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SenderId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChatId");
+
+                    b.HasIndex("SenderId");
+
+                    b.ToTable("ChatMessages");
+                });
 
             modelBuilder.Entity("CoreCare.Models.RegistroBenchmark", b =>
                 {
@@ -69,6 +126,38 @@ namespace CoreCare.Migrations
                     b.ToTable("RegistrosBenchmark");
                 });
 
+            modelBuilder.Entity("CoreCare.Models.SensorReading", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Component")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("RegistroBenchmarkId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("TimeStamp")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("Value")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RegistroBenchmarkId");
+
+                    b.ToTable("SensorReadings");
+                });
+
             modelBuilder.Entity("CoreCare.Models.User", b =>
                 {
                     b.Property<int>("Id")
@@ -81,6 +170,12 @@ namespace CoreCare.Migrations
                     b.Property<string>("Plan")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Cliente");
 
                     b.Property<DateTime>("createdAt")
                         .HasColumnType("TEXT");
@@ -106,6 +201,36 @@ namespace CoreCare.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("CoreCare.Models.Chat", b =>
+                {
+                    b.HasOne("CoreCare.Models.User", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Client");
+                });
+
+            modelBuilder.Entity("CoreCare.Models.ChatMessage", b =>
+                {
+                    b.HasOne("CoreCare.Models.Chat", "Chat")
+                        .WithMany("Messages")
+                        .HasForeignKey("ChatId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CoreCare.Models.User", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Chat");
+
+                    b.Navigation("Sender");
+                });
+
             modelBuilder.Entity("CoreCare.Models.RegistroBenchmark", b =>
                 {
                     b.HasOne("CoreCare.Models.User", "User")
@@ -115,6 +240,25 @@ namespace CoreCare.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("CoreCare.Models.SensorReading", b =>
+                {
+                    b.HasOne("CoreCare.Models.RegistroBenchmark", "RegistroBenchmark")
+                        .WithMany("SensorReadings")
+                        .HasForeignKey("RegistroBenchmarkId");
+
+                    b.Navigation("RegistroBenchmark");
+                });
+
+            modelBuilder.Entity("CoreCare.Models.Chat", b =>
+                {
+                    b.Navigation("Messages");
+                });
+
+            modelBuilder.Entity("CoreCare.Models.RegistroBenchmark", b =>
+                {
+                    b.Navigation("SensorReadings");
                 });
 
             modelBuilder.Entity("CoreCare.Models.User", b =>

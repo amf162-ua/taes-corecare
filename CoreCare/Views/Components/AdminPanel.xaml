@@ -1,0 +1,380 @@
+<UserControl x:Class="CoreCare.Views.Components.AdminPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:CoreCare.Views.Components"
+             xmlns:converters="clr-namespace:CoreCare.Converters"
+             Background="#0A0E1A">
+
+    <UserControl.Resources>
+        <converters:RoleToBrushConverter x:Key="RoleToBrushConverter" />
+        <converters:PlanToBrushConverter x:Key="PlanToBrushConverter" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="70" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#151a2e" BorderBrush="#3300FFFF" BorderThickness="0,0,0,1" Padding="20,0">
+            <DockPanel VerticalAlignment="Center">
+                <Button DockPanel.Dock="Right" x:Name="BtnCloseAdmin" Click="BtnCloseAdmin_Click"
+                        Content="Salir" Foreground="#FF5555" Background="Transparent" 
+                        BorderThickness="0" FontSize="12" FontWeight="Bold" Cursor="Hand" />
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="ADMIN PANEL" Foreground="Cyan" FontSize="20" FontWeight="Black" VerticalAlignment="Center"/>
+                    <TextBlock Text=" - Sistema de Gestión" Foreground="#E4E8F0" FontSize="16" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Tab Control -->
+        <TabControl Grid.Row="1" Background="#0A0E1A" Foreground="#E4E8F0">
+            <!-- Tab 1: Chats (Live Support) -->
+            <TabItem Header="💬 Chats en Vivo" Background="#1C2030" Foreground="#E4E8F0">
+                <Grid Background="#0A0E1A">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="350" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left Panel: Chat List -->
+                    <Border Grid.Column="0" Background="#151a2e" BorderBrush="#3300FFFF" BorderThickness="0,0,1,0" Padding="15">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Text="Chats Abiertos" Foreground="Cyan" FontSize="14" FontWeight="Bold" Margin="0,0,0,15" />
+                            
+                            <ListBox DockPanel.Dock="Top" 
+                                     ItemsSource="{Binding Chats}" 
+                                     SelectedItem="{Binding SelectedChat}"
+                                     Background="Transparent" 
+                                     BorderThickness="0"
+                                     Margin="0,0,0,15"
+                                     MaxHeight="500">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#1C2030" CornerRadius="8" Padding="12" Margin="0,5" 
+                                                BorderBrush="#3300FFFF" BorderThickness="1">
+                                            <StackPanel>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    
+                                                    <TextBlock Grid.Column="0" 
+                                                               Text="{Binding Chat.Client.name}" 
+                                                               Foreground="Cyan" 
+                                                               FontWeight="Bold" 
+                                                               FontSize="12"/>
+                                                    
+                                                    <TextBlock Grid.Column="1" 
+                                                               Text="●" 
+                                                               Foreground="#00FF00" 
+                                                               FontSize="10"
+                                                               Visibility="{Binding HasUnreadMessages, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                                </Grid>
+                                                
+                                                <TextBlock Text="{Binding Chat.Subject}" 
+                                                           Foreground="#E4E8F0" 
+                                                           FontSize="11" 
+                                                           Margin="0,5,0,0"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                
+                                                <TextBlock Text="{Binding Chat.CreatedAt, StringFormat='Abierto: {0:dd/MM/yyyy HH:mm}'}" 
+                                                           Foreground="#717182" 
+                                                           FontSize="9" 
+                                                           Margin="0,3,0,0" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Right Panel: Chat Detail -->
+                    <Border Grid.Column="1" Background="#0A0E1A" Padding="20">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Chat Header -->
+                            <Border Grid.Row="0" Background="#1C2030" CornerRadius="8" Padding="15" Margin="0,0,0,15">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="{Binding SelectedChat.Chat.Client.name, StringFormat='Soporte para: {0}', FallbackValue='Selecciona un chat'}" 
+                                                   Foreground="Cyan" 
+                                                   FontSize="14" 
+                                                   FontWeight="Bold" />
+                                        <TextBlock Text="{Binding SelectedChat.Chat.Subject, StringFormat='Asunto: {0}', FallbackValue=''}" 
+                                                   Foreground="#E4E8F0" 
+                                                   FontSize="12" 
+                                                   Margin="0,5,0,0" />
+                                    </StackPanel>
+                                    
+                                    <Button Grid.Column="1" 
+                                            Content="Cerrar Chat" 
+                                            Command="{Binding CloseSelectedChatCommand}"
+                                            Background="#D4183D" 
+                                            Foreground="White" 
+                                            Padding="15,8" 
+                                            Cursor="Hand" />
+                                </Grid>
+                            </Border>
+
+                            <!-- Messages View -->
+                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,0,0,15">
+                                <ItemsControl ItemsSource="{Binding SelectedChat.Messages, FallbackValue=''}" Background="Transparent">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="0,8" Background="Transparent">
+                                                <Grid Margin="0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- Client Message (Left) -->
+                                                    <Border Grid.Column="0" 
+                                                            Background="#1C2030" 
+                                                            CornerRadius="12" 
+                                                            Padding="12"
+                                                            HorizontalAlignment="Left"
+                                                            MaxWidth="420"
+                                                            BorderBrush="#00FF00" 
+                                                            BorderThickness="1"
+                                                            Visibility="{Binding IsAdmin, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding SenderName}" 
+                                                                       Foreground="#00FF00" 
+                                                                       FontSize="10" 
+                                                                       FontWeight="Bold" />
+                                                            <TextBlock Text="{Binding Message.Message}" 
+                                                                       Foreground="#E4E8F0" 
+                                                                       FontSize="12" 
+                                                                       Margin="0,5,0,0"
+                                                                       TextWrapping="Wrap" />
+                                                            <TextBlock Text="{Binding Message.SentAt, StringFormat='HH:mm:ss'}" 
+                                                                       Foreground="#717182" 
+                                                                       FontSize="9" 
+                                                                       Margin="0,3,0,0" />
+                                                        </StackPanel>
+                                                    </Border>
+
+                                                    <!-- Admin Message (Right) -->
+                                                    <Border Grid.Column="1" 
+                                                            Background="#00FFFF" 
+                                                            CornerRadius="12" 
+                                                            Padding="12"
+                                                            HorizontalAlignment="Right"
+                                                            MaxWidth="420"
+                                                            Visibility="{Binding IsAdmin, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding SenderName}" 
+                                                                       Foreground="#030213" 
+                                                                       FontSize="10" 
+                                                                       FontWeight="Bold" />
+                                                            <TextBlock Text="{Binding Message.Message}" 
+                                                                       Foreground="#030213" 
+                                                                       FontSize="12" 
+                                                                       Margin="0,5,0,0"
+                                                                       TextWrapping="Wrap" />
+                                                            <TextBlock Text="{Binding Message.SentAt, StringFormat='HH:mm:ss'}" 
+                                                                       Foreground="#030213" 
+                                                                       FontSize="9" 
+                                                                       Margin="0,3,0,0"
+                                                                       Opacity="0.7" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+
+                            <!-- Message Input -->
+                            <Grid Grid.Row="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox Grid.Column="0" 
+                                         Text="{Binding MessageInput, UpdateSourceTrigger=PropertyChanged}"
+                                         Background="#1C2030" 
+                                         Foreground="#E4E8F0"
+                                         BorderBrush="#3300FFFF"
+                                         BorderThickness="1"
+                                         Height="42"
+                                         VerticalAlignment="Center"
+                                         Padding="10,8"
+                                         Margin="0,0,10,0" />
+
+                                <Button Grid.Column="1" 
+                                        Content="Enviar" 
+                                        Command="{Binding SendMessageCommand}"
+                                        Background="#030213" 
+                                        Foreground="Cyan"
+                                        Padding="20,8" 
+                                        VerticalAlignment="Center"
+                                        Cursor="Hand" />
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- Tab 2: User Management -->
+            <TabItem Header="👥 Usuarios" Background="#1C2030" Foreground="#E4E8F0">
+                <Grid Background="#0A0E1A">
+                    <Grid.Margin>20</Grid.Margin>
+                    <DockPanel>
+                        <!-- Filters -->
+                        <Border DockPanel.Dock="Top" Background="#1C2030" CornerRadius="8" Padding="15" Margin="0,0,0,15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="200" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox Grid.Column="0" 
+                                         Text="{Binding UserSearchFilter, UpdateSourceTrigger=PropertyChanged}"
+                                         Background="#0A0E1A" 
+                                         Foreground="#E4E8F0"
+                                         BorderBrush="#3300FFFF"
+                                         BorderThickness="1"
+                                         Margin="0,0,10,0" />
+
+                                <ComboBox Grid.Column="1" 
+                                          SelectedValuePath="Content"
+                                          SelectedValue="{Binding SelectedRoleFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          Background="#0A0E1A" 
+                                          Foreground="#E4E8F0"
+                                          BorderBrush="#3300FFFF"
+                                          BorderThickness="1"
+                                          Margin="0,0,10,0">
+                                    <ComboBoxItem Content="Todos" />
+                                    <ComboBoxItem Content="Cliente" />
+                                    <ComboBoxItem Content="Administrador" />
+                                </ComboBox>
+
+                                <Button Grid.Column="2" 
+                                        Content="Limpiar" 
+                                        Command="{Binding ClearUserFiltersCommand}"
+                                        Background="#717182" 
+                                        Foreground="White"
+                                        Padding="15,8" 
+                                        Cursor="Hand" />
+                            </Grid>
+                        </Border>
+
+                        <!-- User Count -->
+                        <TextBlock DockPanel.Dock="Top" 
+                                   Text="{Binding TotalFilteredUsers, StringFormat='Total usuarios: {0}'}" 
+                                   Foreground="#717182" 
+                                   FontSize="12" 
+                                   Margin="0,0,0,10" />
+
+                        <!-- Users List -->
+                        <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding FilteredUsers}" Background="Transparent">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#1C2030" CornerRadius="8" Padding="15" Margin="0,5" 
+                                                BorderBrush="#3300FFFF" BorderThickness="1">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- User Info -->
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding User.username}" Foreground="Cyan" FontSize="12" FontWeight="Bold" />
+                                                    <TextBlock Text="{Binding User.name}" Foreground="#E4E8F0" FontSize="11" Margin="0,3,0,0" />
+                                                    <TextBlock Text="{Binding User.email}" Foreground="#717182" FontSize="10" Margin="0,2,0,0" />
+                                                </StackPanel>
+
+                                                <!-- Role Badge -->
+                                                <Border Grid.Column="1" 
+                                                        Background="{Binding User.Role, Converter={StaticResource RoleToBrushConverter}}"
+                                                        CornerRadius="4" 
+                                                        Padding="8,4"
+                                                        Margin="15,0">
+                                                    <TextBlock Text="{Binding RoleDisplay}" 
+                                                               Foreground="Black" 
+                                                               FontSize="10" 
+                                                               FontWeight="Bold" />
+                                                </Border>
+
+                                                <!-- Plan Badge -->
+                                                <Border Grid.Column="2" 
+                                                        Background="{Binding User.Plan, Converter={StaticResource PlanToBrushConverter}}"
+                                                        CornerRadius="4" 
+                                                        Padding="8,4"
+                                                        Margin="5,0">
+                                                    <TextBlock Text="{Binding PlanDisplay}" 
+                                                               Foreground="Black" 
+                                                               FontSize="10" 
+                                                               FontWeight="Bold" />
+                                                </Border>
+
+                                                <!-- Toggle Role Button -->
+                                                <Button Grid.Column="3" 
+                                                        Content="Cambiar Rol" 
+                                                        Command="{Binding RelativeSource={RelativeSource AncestorType=ItemsControl}, Path=DataContext.ToggleUserRoleCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Background="#030213" 
+                                                        Foreground="Cyan"
+                                                        Padding="12,6" 
+                                                        Margin="10,0"
+                                                        Cursor="Hand" />
+
+                                                <!-- Toggle Plan Button -->
+                                                <Button Grid.Column="4" 
+                                                        Content="Cambiar Plan" 
+                                                        Command="{Binding RelativeSource={RelativeSource AncestorType=ItemsControl}, Path=DataContext.ToggleUserPlanCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Background="#FFA500" 
+                                                        Foreground="Black"
+                                                        Padding="12,6" 
+                                                        Margin="5,0"
+                                                        Cursor="Hand" />
+
+                                                <!-- Delete Button -->
+                                                <Button Grid.Column="5" 
+                                                        Content="Eliminar" 
+                                                        Command="{Binding RelativeSource={RelativeSource AncestorType=ItemsControl}, Path=DataContext.DeleteUserCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Background="#D4183D" 
+                                                        Foreground="White"
+                                                        Padding="12,6" 
+                                                        Margin="5,0"
+                                                        Cursor="Hand" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

@@ -4,6 +4,12 @@ using System.Text;
 
 namespace CoreCare.Models
 {
+    public enum UserRole
+    {
+        Cliente,
+        Administrador
+    }
+
     public enum TipoPlan
     {
         Basico,
@@ -16,6 +22,7 @@ namespace CoreCare.Models
         public string username { get; set; } = string.Empty;
         public string email { get; set; } = string.Empty;
         public string password { get; set; } = string.Empty;
+        public UserRole Role { get; set; } = UserRole.Cliente;
         public TipoPlan Plan { get; set; } = TipoPlan.Basico;
         public DateTime createdAt { get; set; }
         public bool IsActive { get; set; } = true;

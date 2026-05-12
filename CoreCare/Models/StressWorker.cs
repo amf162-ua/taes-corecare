@@ -76,12 +76,36 @@ namespace CoreCare.Models
             Task.Run(() =>
             {
                 var end = DateTime.Now.AddSeconds(seconds);
+                var buffer = new byte[8 * 1024 * 1024];
+                new Random().NextBytes(buffer);
 
                 try
                 {
+                    using var stream = new FileStream(
+                        path,
+                        FileMode.Create,
+                        FileAccess.ReadWrite,
+                        FileShare.None,
+                        bufferSize: 1024 * 1024,
+                        FileOptions.WriteThrough | FileOptions.SequentialScan);
+
                     while (DateTime.Now < end && !token.IsCancellationRequested)
                     {
-                        File.WriteAllBytes(path, new byte[1024 * 1024]);
+                        stream.Position = 0;
+
+                        for (int i = 0; i < 16 && DateTime.Now < end && !token.IsCancellationRequested; i++)
+                        {
+                            stream.Write(buffer, 0, buffer.Length);
+                        }
+
+                        stream.Flush(true);
+
+                        stream.Position = 0;
+                        while (stream.Read(buffer, 0, buffer.Length) > 0 &&
+                               DateTime.Now < end &&
+                               !token.IsCancellationRequested)
+                        {
+                        }
                     }
                 }
                 finally
