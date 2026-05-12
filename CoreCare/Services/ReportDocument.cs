@@ -105,6 +105,32 @@ namespace CoreCare.Services
                 column.Item().Element(c => ComposeSection(c, "Recomendaciones de IA", ComposeRecommendations));
                 column.Item().Element(c => ComposeSection(c, "Mejoras de hardware sugeridas", ComposeUpgradeAdvice));
 
+                if (_data.Sponsors != null && _data.Sponsors.Count > 0)
+                {
+                    column.Item().Element(c => ComposeSection(c, "Patrocinadores", ComposeSponsors));
+                }
+            });
+        }
+
+        private void ComposeSponsors(IContainer container)
+        {
+            container.Column(column =>
+            {
+                column.Spacing(10);
+
+                foreach (var sponsor in _data.Sponsors)
+                {
+                    column.Item().Background(Surface).Border(1).BorderColor(Border).Padding(10).Column(c =>
+                    {
+                        c.Spacing(4);
+                        c.Item().Text(sponsor.Name).FontSize(11).SemiBold().FontColor(Primary);
+                        c.Item().Text(sponsor.Message).FontSize(9).FontColor(Ink);
+                        if (!string.IsNullOrWhiteSpace(sponsor.Website))
+                        {
+                            c.Item().Text(sponsor.Website).FontSize(8).FontColor(Muted).Underline();
+                        }
+                    });
+                }
             });
         }
 

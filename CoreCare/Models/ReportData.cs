@@ -26,5 +26,7 @@ namespace CoreCare.Models
         public List<ComponentScore> UpgradeScores { get; set; } = new();
 
         public List<UpgradeRecommendation> UpgradeRecommendations { get; set; } = new();
+
+        public List<Sponsor> Sponsors { get; set; } = new();
     }
 }

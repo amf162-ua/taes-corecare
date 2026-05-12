@@ -279,6 +279,16 @@ namespace CoreCare.ViewModels
             }
         }
 
+        private static System.Collections.Generic.List<Sponsor> GetFixedSponsors()
+        {
+            return new System.Collections.Generic.List<Sponsor>
+            {
+                new Sponsor { Name = "PC Componentes", Message = "¡Encuentra los mejores componentes al mejor precio!", Website = "https://www.pccomponentes.com" },
+                new Sponsor { Name = "Amazon", Message = "Envío rápido en miles de productos de hardware.", Website = "https://www.amazon.es" },
+                new Sponsor { Name = "Coolmod", Message = "Especialistas en refrigeración y modding.", Website = "https://www.coolmod.com" }
+            };
+        }
+
         [RelayCommand]
         public async Task GenerateReportAsync()
         {
@@ -346,7 +356,8 @@ namespace CoreCare.ViewModels
                     RecommendationsGeneratedLocally = generatedLocally,
                     UpgradeScores = upgradeScores,
                     UpgradeRecommendations = upgradeRecommendations,
-                    TelemetryData = telemetryData
+                    TelemetryData = telemetryData,
+                    Sponsors = GetFixedSponsors()
                 };
 
                 var document = new ReportDocument(data);
