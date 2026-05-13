@@ -69,6 +69,38 @@ namespace CoreCare.Migrations
                     b.ToTable("RegistrosBenchmark");
                 });
 
+            modelBuilder.Entity("CoreCare.Models.SensorReading", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Component")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("RegistroBenchmarkId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("TimeStamp")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("Value")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RegistroBenchmarkId");
+
+                    b.ToTable("SensorReadings");
+                });
+
             modelBuilder.Entity("CoreCare.Models.User", b =>
                 {
                     b.Property<int>("Id")
@@ -77,6 +109,11 @@ namespace CoreCare.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasDefaultValue("Client")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Plan")
                         .IsRequired()
@@ -115,6 +152,20 @@ namespace CoreCare.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("CoreCare.Models.SensorReading", b =>
+                {
+                    b.HasOne("CoreCare.Models.RegistroBenchmark", "RegistroBenchmark")
+                        .WithMany("SensorReadings")
+                        .HasForeignKey("RegistroBenchmarkId");
+
+                    b.Navigation("RegistroBenchmark");
+                });
+
+            modelBuilder.Entity("CoreCare.Models.RegistroBenchmark", b =>
+                {
+                    b.Navigation("SensorReadings");
                 });
 
             modelBuilder.Entity("CoreCare.Models.User", b =>

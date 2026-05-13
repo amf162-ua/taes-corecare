@@ -1,18 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
-		<TargetFramework>net10.0-windows</TargetFramework>
+		<TargetFramework>net9.0-windows</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
-
 	<ItemGroup>
-	  <PackageReference Include="System.Management" Version="10.0.5" />
+		<PackageReference Include="System.Management" Version="10.0.5" />
 	</ItemGroup>
-
 	<ItemGroup>
 		<ProjectReference Include="..\CoreCare\CoreCare.csproj" />
 	</ItemGroup>
-
 </Project>
