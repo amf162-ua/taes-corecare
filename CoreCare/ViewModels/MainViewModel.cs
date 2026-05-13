@@ -569,6 +569,16 @@ namespace CoreCare.ViewModels
 - Impacto: Medio");
             }
 
+            if (recommendations.Count == 0)
+            {
+                recommendations.Add($@"=== NOTAS ADICIONALES ===
+[Estado general]
+- Problema: No se detectan cargas, temperaturas o uso de memoria/disco por encima de los umbrales de alerta con la telemetría disponible.
+- Solución: Mantener limpieza física, revisar actualizaciones de drivers y repetir el informe tras ejecutar benchmarks si se quiere evaluar el rendimiento bajo carga.
+- Coste: Bajo
+- Impacto: Medio");
+            }
+
             return recommendations;
         }
 
