@@ -37,6 +37,7 @@ namespace CoreCare.Services
 
             var query = _db.RegistrosBenchmark
                 .AsNoTracking()
+                .Include(record => record.SensorReadings)
                 .Where(record => record.UserId == userId)
                 .OrderByDescending(record => record.Timestamp)
                 .AsQueryable();

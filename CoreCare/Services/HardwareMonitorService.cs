@@ -416,20 +416,17 @@ namespace CoreCare.Services
             value = 0f;
             reason = string.Empty;
 
-            var storage = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Storage);
+            var storages = GetStorageHardware().ToList();
 
-            if (storage is null)
-            {
-                reason = "Storage hardware not detected.";
-                return false;
-            }
+            var loadSensors = storages
+                .SelectMany(storage => storage.Sensors)
+                .Where(sensor => sensor.SensorType == SensorType.Load)
+                .Where(sensor => sensor.Name.Contains("Used", StringComparison.OrdinalIgnoreCase))
+                .Where(sensor => sensor.Value.HasValue)
+                .Select(sensor => sensor.Value!.Value)
+                .ToList();
 
-            var loadSensor = storage.Sensors.FirstOrDefault(s =>
-                s.SensorType == SensorType.Load &&
-                s.Name.Contains("Used", StringComparison.OrdinalIgnoreCase));
-
-            // SOLUCIÓN 2: Guardamos el valor del sensor de carga para poder usarlo abajo
-            float load = loadSensor?.Value ?? 0f;
+            float load = loadSensors.Any() ? loadSensors.Max() : 0f;
 
             var readMbit = TryGetDiskReadRateMbit(out var readRate, out _) ? readRate : 0f;
             var writeMbit = TryGetDiskWriteRateMbit(out var writeRate, out _) ? writeRate : 0f;
@@ -461,26 +458,29 @@ namespace CoreCare.Services
             value = 0f;
             reason = string.Empty;
 
-            var storage = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Storage);
-
-            if (storage is null)
+            var storages = GetStorageHardware().ToList();
+            float? bestReading = null;
+            foreach (var sensor in storages.SelectMany(storage => storage.Sensors)
+                                           .Where(s => s.SensorType == SensorType.Throughput &&
+                                                       s.Name.Contains("Read", StringComparison.OrdinalIgnoreCase))
+                                           .Where(s => s.Value.HasValue))
             {
-                reason = "Storage hardware not detected.";
-                return false;
+                var sensorMbit = NormalizeSensorThroughputToMbit(sensor.Value!.Value, sensor.Name);
+                if (sensorMbit is < 0f or > MaxPlausibleDiskThroughputMbit)
+                {
+                    continue;
+                }
+
+                if (!bestReading.HasValue || sensorMbit > bestReading.Value)
+                {
+                    bestReading = sensorMbit;
+                }
             }
 
-            var readSensor = storage.Sensors.FirstOrDefault(s =>
-                s.SensorType == SensorType.Throughput &&
-                s.Name.Contains("Read", StringComparison.OrdinalIgnoreCase));
-
-            if (readSensor?.Value is float read)
+            if (bestReading.HasValue)
             {
-                var sensorMbit = NormalizeSensorThroughputToMbit(read, readSensor.Name);
-                if (sensorMbit is >= 0f and <= MaxPlausibleDiskThroughputMbit)
-                {
-                    value = sensorMbit;
-                    return true;
-                }
+                value = bestReading.Value;
+                return true;
             }
 
             var wmiRead = TryGetWmiDiskReadBytesPerSec();
@@ -502,26 +502,29 @@ namespace CoreCare.Services
             value = 0f;
             reason = string.Empty;
 
-            var storage = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Storage);
-
-            if (storage is null)
+            var storages = GetStorageHardware().ToList();
+            float? bestReading = null;
+            foreach (var sensor in storages.SelectMany(storage => storage.Sensors)
+                                           .Where(s => s.SensorType == SensorType.Throughput &&
+                                                       s.Name.Contains("Write", StringComparison.OrdinalIgnoreCase))
+                                           .Where(s => s.Value.HasValue))
             {
-                reason = "Storage hardware not detected.";
-                return false;
+                var sensorMbit = NormalizeSensorThroughputToMbit(sensor.Value!.Value, sensor.Name);
+                if (sensorMbit is < 0f or > MaxPlausibleDiskThroughputMbit)
+                {
+                    continue;
+                }
+
+                if (!bestReading.HasValue || sensorMbit > bestReading.Value)
+                {
+                    bestReading = sensorMbit;
+                }
             }
 
-            var writeSensor = storage.Sensors.FirstOrDefault(s =>
-                s.SensorType == SensorType.Throughput &&
-                s.Name.Contains("Write", StringComparison.OrdinalIgnoreCase));
-
-            if (writeSensor?.Value is float write)
+            if (bestReading.HasValue)
             {
-                var sensorMbit = NormalizeSensorThroughputToMbit(write, writeSensor.Name);
-                if (sensorMbit is >= 0f and <= MaxPlausibleDiskThroughputMbit)
-                {
-                    value = sensorMbit;
-                    return true;
-                }
+                value = bestReading.Value;
+                return true;
             }
 
             var wmiWrite = TryGetWmiDiskWriteBytesPerSec();
@@ -677,6 +680,30 @@ namespace CoreCare.Services
         private static float ClampPercent(float value)
         {
             return Math.Clamp(value, 0f, 100f);
+        }
+
+        private IEnumerable<IHardware> GetStorageHardware()
+        {
+            foreach (var hardware in _computer.Hardware)
+            {
+                if (hardware == null)
+                {
+                    continue;
+                }
+
+                if (hardware.HardwareType == HardwareType.Storage)
+                {
+                    yield return hardware;
+                }
+
+                foreach (var subHardware in hardware.SubHardware)
+                {
+                    if (subHardware?.HardwareType == HardwareType.Storage)
+                    {
+                        yield return subHardware;
+                    }
+                }
+            }
         }
 
         public void Dispose() => _computer.Close();
