@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using CoreCare.Views.Components;
 using CoreCare.ViewModels;
 
 namespace CoreCare.Views.Pages
@@ -15,7 +16,7 @@ namespace CoreCare.Views.Pages
         private void BtnBack_Click(object sender, RoutedEventArgs e)
         {
             var win = Window.GetWindow(this) as MainWindow;
-            win?.MainContentArea.Navigate(new MainDashboardPage());
+            win?.MainContentArea.Navigate(new HeroSection());
         }
     }
 }
