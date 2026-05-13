@@ -1,0 +1,10 @@
+<Page x:Class="CoreCare.Views.Pages.HomePage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:components="clr-namespace:CoreCare.Views.Components"
+      Title="HomePage">
+
+    <Grid>
+        <components:HeroSection />
+    </Grid>
+</Page>
