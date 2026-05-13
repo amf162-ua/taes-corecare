@@ -29,5 +29,47 @@ namespace CoreCare.Models
 
         // Relación con lecturas detalladas de sensores
         public ICollection<SensorReading> SensorReadings { get; set; } = new List<SensorReading>();
+
+        [NotMapped]
+        public IReadOnlyCollection<ComponentType> ComponentsScanned
+        {
+            get
+            {
+                return SensorReadings
+                    .Select(reading => reading.Component)
+                    .Distinct()
+                    .ToList();
+            }
+        }
+
+        [NotMapped]
+        public string BenchmarkTypeLabel
+        {
+            get
+            {
+                var components = ComponentsScanned;
+                if (components.Count == 0)
+                {
+                    return "Benchmark";
+                }
+
+                if (components.Count >= 4)
+                {
+                    return "Completo";
+                }
+
+                return string.Join(" + ", components.Select(c => c switch
+                {
+                    ComponentType.Cpu => "CPU",
+                    ComponentType.Gpu => "GPU",
+                    ComponentType.Ram => "RAM",
+                    ComponentType.Disk => "Disco",
+                    _ => c.ToString()
+                }));
+            }
+        }
+
+        [NotMapped]
+        public OxyPlot.PlotModel? PerformancePlot { get; set; }
     }
 }
