@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
-using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -19,8 +18,9 @@ namespace CoreCare.Services
         private const string BaseUrl = "https://generativelanguage.googleapis.com/v1/models";
         private static readonly string[] ModelFallbackOrder =
         {
+            "gemini-2.5-flash",
             "gemini-2.5-flash-lite",
-            "gemini-2.5-flash"
+            "gemini-3.1-flash-lite"
         };
 
         public GeminiAIService()
@@ -118,7 +118,7 @@ Datos de sistema: {jsonData}";
             _httpClient.DefaultRequestHeaders.Clear();
             _httpClient.DefaultRequestHeaders.Add("x-goog-api-key", ApiKey);
 
-            string? lastError = null;
+            var errors = new List<string>();
 
             foreach (var model in ModelFallbackOrder)
             {
@@ -143,31 +143,22 @@ Datos de sistema: {jsonData}";
                         }
                     }
 
-                    lastError = $"Error: {response.StatusCode} - {responseJson}";
-
-                    if (!IsTransientGeminiError(response.StatusCode))
-                    {
-                        return lastError;
-                    }
+                    errors.Add($"{model}: {response.StatusCode} - {responseJson}");
                 }
                 catch (TaskCanceledException ex)
                 {
-                    lastError = $"Error: Timeout consultando Gemini ({model}) - {ex.Message}";
+                    errors.Add($"{model}: Timeout - {ex.Message}");
                 }
                 catch (HttpRequestException ex)
                 {
-                    lastError = $"Error: Fallo de red consultando Gemini ({model}) - {ex.Message}";
+                    errors.Add($"{model}: Fallo de red - {ex.Message}");
                 }
             }
 
-            return lastError ?? "Error: No se pudo obtener respuesta de Gemini.";
+            return errors.Count == 0
+                ? "Error: No se pudo obtener respuesta de Gemini."
+                : "Error: No se pudo obtener respuesta de Gemini. Intentos: " + string.Join(" | ", errors);
         }
-
-        private static bool IsTransientGeminiError(HttpStatusCode statusCode)
-            => statusCode == HttpStatusCode.TooManyRequests ||
-               statusCode == HttpStatusCode.ServiceUnavailable ||
-               statusCode == HttpStatusCode.GatewayTimeout ||
-               statusCode == HttpStatusCode.BadGateway;
     }
 
     internal class GeminiResponse
