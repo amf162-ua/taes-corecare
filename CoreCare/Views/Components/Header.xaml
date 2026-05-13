@@ -16,7 +16,7 @@
                 <Button Content="Inicio" Click="BtnHome_Click" Foreground="White" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="5,0" FontSize="14" FontWeight="SemiBold"/>
                 <Button Content="Benchmarks" Click="BtnBenchmarks_Click" Foreground="White" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="5,0" FontSize="14" FontWeight="SemiBold"/>
                 <Button Content="Historial" Click="BtnHistory_Click" Foreground="White" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="5,0" FontSize="14" FontWeight="SemiBold"/>
-                <Button x:Name="BtnSupport" Content="💬 Soporte" Click="BtnSupport_Click" Foreground="White" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="5,0" FontSize="14" FontWeight="SemiBold" Visibility="Collapsed"/>
+                <Button x:Name="BtnSupport" Content="💬 Soporte" Click="BtnSupport_Click" Foreground="White" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="5,0" FontSize="14" FontWeight="SemiBold" Visibility="Visible"/>
                 <Button Content="Arranque" Click="BtnArranque_Click" Foreground="#00E5FF" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="5,0" FontSize="14" FontWeight="SemiBold"/>
             </StackPanel>
 

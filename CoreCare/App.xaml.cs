@@ -148,6 +148,27 @@ namespace CoreCare
                 {
                     LoggingService.Information("Usuario demo cliente ya existe; seeder saltado para client");
                 }
+
+                var guest = db.Users.FirstOrDefault(u => u.username == "invitado" || u.email == "invitado@corecare.local" || u.name == "Invitado");
+                if (guest == null)
+                {
+                    db.Users.Add(new User
+                    {
+                        name = "Invitado",
+                        username = "invitado",
+                        email = "invitado@corecare.local",
+                        password = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString(), workFactor: 12),
+                        Role = UserRole.Cliente,
+                        createdAt = DateTime.UtcNow,
+                        IsActive = true
+                    });
+                    db.SaveChanges();
+                    LoggingService.Information("Usuario invitado insertado por seeder para soporte anónimo");
+                }
+                else
+                {
+                    LoggingService.Information("Usuario invitado ya existe; seeder saltado para invitado");
+                }
             }
             catch (Exception ex)
             {

@@ -249,7 +249,7 @@ namespace CoreCare.ViewModels
                                     chatVm.Messages.Add(new ChatMessageViewModel
                                     {
                                         Message = msg,
-                                        SenderName = msg.Sender?.name ?? "Unknown",
+                                        SenderName = msg.Sender?.name ?? "Invitado",
                                         IsAdmin = msg.Sender?.Role == UserRole.Administrador
                                     });
                                 }

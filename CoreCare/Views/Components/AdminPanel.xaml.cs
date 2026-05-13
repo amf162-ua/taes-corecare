@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using CoreCare.ViewModels;
 using CoreCare.Services;
+using CoreCare.Views.Pages;
 
 namespace CoreCare.Views.Components
 {
@@ -24,17 +25,17 @@ namespace CoreCare.Views.Components
         private void BtnCloseAdmin_Click(object sender, RoutedEventArgs e)
         {
             // Sign out the user
+            App.IsUserLoggedIn = false;
+            App.CurrentUsername = "Invitado";
+            App.IsPremium = false;
             SessionService.SignOut();
             
-            // Close the admin window
             var adminWindow = Window.GetWindow(this);
-            
-            // Show LoginWindow before closing AdminWindow
-            var loginWindow = new LoginWindow();
-            Application.Current.MainWindow = loginWindow;
-            loginWindow.Show();
-            
-            // Close admin window
+
+            var mainWindow = new CoreCare.MainWindow();
+            Application.Current.MainWindow = mainWindow;
+            mainWindow.Show();
+
             adminWindow?.Close();
         }
     }

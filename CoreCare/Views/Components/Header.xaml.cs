@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using CoreCare.Views.Pages;
 using CoreCare.Views.Modals;
 using CoreCare.Views;
+using CoreCare.Services;
 
 namespace CoreCare.Views.Components
 {
@@ -21,7 +22,7 @@ namespace CoreCare.Views.Components
                 GuestPanel.Visibility = Visibility.Collapsed;
                 UserPanel.Visibility = Visibility.Visible;
                 BtnPremium.Visibility = Visibility.Visible; // Mostramos premium
-                BtnSupport.Visibility = Visibility.Visible; // Mostrar soporte para usuarios logueados
+                BtnSupport.Visibility = Visibility.Visible; // Mostrar soporte siempre
                 TxtUsername.Text = App.CurrentUsername.ToUpper();
             }
             else
@@ -29,7 +30,7 @@ namespace CoreCare.Views.Components
                 GuestPanel.Visibility = Visibility.Visible;
                 UserPanel.Visibility = Visibility.Collapsed;
                 BtnPremium.Visibility = Visibility.Collapsed; // Ocultamos premium
-                BtnSupport.Visibility = Visibility.Collapsed; // Ocultar soporte para no logueados
+                BtnSupport.Visibility = Visibility.Visible; // Soporte disponible para invitados
             }
         }
 
@@ -104,11 +105,13 @@ namespace CoreCare.Views.Components
 
         private void BtnLogout_Click(object sender, RoutedEventArgs e)
         {
+            SessionService.SignOut();
             App.IsUserLoggedIn = false;
             App.CurrentUsername = "Invitado";
+            App.IsPremium = false;
             ActualizarInterfaz();
             var win = Window.GetWindow(this) as MainWindow;
-            win?.MainContentArea.Navigate(new MainDashboardPage());
+            win?.MainContentArea.Navigate(new HeroSection());
         }
     }
 }

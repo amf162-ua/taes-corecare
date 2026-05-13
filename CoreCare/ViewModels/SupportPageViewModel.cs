@@ -15,6 +15,8 @@ namespace CoreCare.ViewModels
 {
     public class SupportPageViewModel : INotifyPropertyChanged
     {
+        private const string GuestUserName = "invitado";
+        private const string GuestDisplayName = "Invitado";
         private CoreCareDbContext _db;
         private DispatcherTimer _pollTimer;
         private string _chatSubject;
@@ -99,7 +101,7 @@ namespace CoreCare.ViewModels
             var selectedChatVm = SelectedChat;
 
             UserChats.Clear();
-            var currentUser = SessionService.CurrentUser;
+            var currentUser = GetSupportUser();
             if (currentUser == null) return;
 
             var userChats = _db.Chats
@@ -130,7 +132,7 @@ namespace CoreCare.ViewModels
                         chatVm.Messages.Add(new ChatMessageViewModel
                         {
                             Message = msg,
-                            SenderName = msg.Sender?.name ?? "Unknown",
+                            SenderName = msg.Sender?.name ?? GuestDisplayName,
                             IsAdmin = msg.Sender?.Role == UserRole.Administrador
                         });
                     }
@@ -178,7 +180,7 @@ namespace CoreCare.ViewModels
 
             try
             {
-                var currentUser = SessionService.CurrentUser;
+                var currentUser = GetSupportUser();
                 if (currentUser == null) return;
 
                 var newChat = new Chat
@@ -233,7 +235,8 @@ namespace CoreCare.ViewModels
                 var chat = _db.Chats.FirstOrDefault(c => c.Id == SelectedChat.Chat.Id);
                 if (chat == null) return;
 
-                var currentUser = SessionService.CurrentUser;
+                var currentUser = GetSupportUser();
+                if (currentUser == null) return;
 
                 var newMessage = new ChatMessage
                 {
@@ -290,6 +293,46 @@ namespace CoreCare.ViewModels
             };
 
             _pollTimer.Start();
+        }
+
+        private User GetSupportUser()
+        {
+            var currentUser = SessionService.CurrentUser;
+            if (currentUser != null)
+            {
+                return currentUser;
+            }
+
+            return EnsureGuestUser();
+        }
+
+        private User EnsureGuestUser()
+        {
+            var guestUser = _db.Users.FirstOrDefault(user =>
+                user.username == GuestUserName ||
+                user.email == "invitado@corecare.local" ||
+                user.name == GuestDisplayName);
+
+            if (guestUser != null)
+            {
+                return guestUser;
+            }
+
+            guestUser = new User
+            {
+                name = GuestDisplayName,
+                username = GuestUserName,
+                email = "invitado@corecare.local",
+                password = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString(), workFactor: 12),
+                Role = UserRole.Cliente,
+                createdAt = DateTime.UtcNow,
+                IsActive = true
+            };
+
+            _db.Users.Add(guestUser);
+            _db.SaveChanges();
+
+            return guestUser;
         }
     }
 }
