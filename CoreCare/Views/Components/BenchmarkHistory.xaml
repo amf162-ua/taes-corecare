@@ -1,43 +1,92 @@
 ﻿<UserControl x:Class="CoreCare.Views.Components.BenchmarkHistory"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:oxy="http://oxyplot.org/wpf"
              Loaded="UserControl_Loaded">
 
-    <StackPanel Margin="15">
-        <TextBlock Text="H I S T O R I A L" Foreground="White" FontSize="24" 
-                   FontWeight="Black" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+    <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="15">
+            <TextBlock Text="H I S T O R I A L" Foreground="White" FontSize="24" 
+                       FontWeight="Black" HorizontalAlignment="Center" Margin="0,0,0,20"/>
 
-        <ItemsControl x:Name="ResultsList">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <Border Margin="0,0,0,10" Padding="15" CornerRadius="8" 
-                            Background="#1c2030" BorderThickness="1" BorderBrush="Cyan">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
+            <ItemsControl x:Name="ResultsList">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="0,0,0,10" Padding="15" CornerRadius="8" 
+                                Background="#1c2030" BorderThickness="1" BorderBrush="Cyan">
+                            <Expander Background="Transparent" BorderThickness="0" Foreground="White">
+                                <Expander.Header>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
 
-                            <StackPanel>
-                                <TextBlock Text="REGISTRO DE BENCHMARK" Foreground="Cyan" FontSize="14" FontWeight="Bold"/>
-                                <TextBlock Text="{Binding Timestamp, StringFormat=\{0:dd/MM/yyyy HH:mm\}}" 
-                                           Foreground="Gray" FontSize="10" Margin="0,2,0,0"/>
-                            </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding BenchmarkTypeLabel}" Foreground="Cyan" FontSize="14" FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding Timestamp, StringFormat=\{0:dd/MM/yyyy HH:mm\}}" 
+                                                       Foreground="Gray" FontSize="10" Margin="0,2,0,0"/>
+                                        </StackPanel>
 
-                            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <StackPanel Margin="10,0">
-                                    <TextBlock Text="PUNTOS" Foreground="Gray" FontSize="9" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="{Binding Score, StringFormat=\{0:F2\}}" Foreground="White" FontWeight="Black" FontSize="16"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <StackPanel Margin="10,0">
+                                                <TextBlock Text="PUNTOS" Foreground="Gray" FontSize="9" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Score, StringFormat=\{0:F2\}}" Foreground="White" FontWeight="Black" FontSize="16"/>
+                                            </StackPanel>
+                                            <StackPanel Margin="10,0">
+                                                <TextBlock Text="TEMP" Foreground="Gray" FontSize="9" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="{Binding CpuTemp, StringFormat=\{0:F0\}°C}" Foreground="White" FontWeight="Black" FontSize="16"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+                                </Expander.Header>
+
+                                <StackPanel Margin="0,10,0,0">
+                                <StackPanel Margin="0,0,0,10">
+                                    <oxy:PlotView Model="{Binding PerformancePlot}" Height="180"
+                                                  Background="Transparent" />
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,0">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
+                                            <Rectangle Width="10" Height="10" Fill="SkyBlue" Margin="0,0,6,0"/>
+                                            <TextBlock Text="CPU" Foreground="White" FontSize="9"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
+                                            <Rectangle Width="10" Height="10" Fill="Orange" Margin="0,0,6,0"/>
+                                            <TextBlock Text="GPU" Foreground="White" FontSize="9"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
+                                            <Rectangle Width="10" Height="10" Fill="MediumSeaGreen" Margin="0,0,6,0"/>
+                                            <TextBlock Text="RAM" Foreground="White" FontSize="9"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Rectangle Width="10" Height="10" Fill="PaleVioletRed" Margin="0,0,6,0"/>
+                                            <TextBlock Text="Disco" Foreground="White" FontSize="9"/>
+                                        </StackPanel>
+                                    </StackPanel>
                                 </StackPanel>
-                                <StackPanel Margin="10,0">
-                                    <TextBlock Text="TEMP" Foreground="Gray" FontSize="9" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="{Binding CpuTemp, StringFormat=\{0:F0\}°C}" Foreground="White" FontWeight="Black" FontSize="16"/>
+
+                                <Expander Header="Ver más" Foreground="White" Background="Transparent" BorderThickness="0">
+                                    <StackPanel Margin="0,8,0,0">
+                                        <TextBlock Text="Lecturas exactas" Foreground="Gray" FontSize="10" Margin="0,0,0,6"/>
+                                        <ItemsControl ItemsSource="{Binding SensorReadings}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <DockPanel Margin="0,2">
+                                                        <TextBlock Text="{Binding Component}" Foreground="Gray" FontSize="9" Width="70"/>
+                                                        <TextBlock Text="{Binding Name}" Foreground="White" FontSize="9"/>
+                                                        <TextBlock Text="{Binding Value, StringFormat=\{0:F2\}}" Foreground="Cyan" FontSize="9" Margin="10,0,0,0"/>
+                                                    </DockPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Expander>
                                 </StackPanel>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-    </StackPanel>
+                            </Expander>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
 </UserControl>

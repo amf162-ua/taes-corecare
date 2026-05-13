@@ -19,6 +19,8 @@ namespace CoreCare.Data
         public DbSet<User> Users { get; set; }
         public DbSet<RegistroBenchmark> RegistrosBenchmark { get; set; }
         public DbSet<SensorReading> SensorReadings { get; set; }
+        public DbSet<Chat> Chats { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
@@ -58,14 +60,67 @@ namespace CoreCare.Data
                      UserRole.Cliente
             );
 
+            // Configure User entity with explicit column mappings
+            modelBuilder.Entity<User>()
+                .ToTable("Users");
+
+            modelBuilder.Entity<User>()
+                .Property(u => u.Id)
+                .HasColumnName("Id");
+
+            modelBuilder.Entity<User>()
+                .Property(u => u.name)
+                .HasColumnName("name");
+
+            modelBuilder.Entity<User>()
+                .Property(u => u.username)
+                .HasColumnName("username");
+
+            modelBuilder.Entity<User>()
+                .Property(u => u.email)
+                .HasColumnName("email");
+
+            modelBuilder.Entity<User>()
+                .Property(u => u.password)
+                .HasColumnName("password");
+
             modelBuilder.Entity<User>()
                 .Property(u => u.Role)
+                .HasColumnName("Role")
                 .HasConversion(roleConverter)
                 .HasDefaultValue(UserRole.Cliente);
 
             modelBuilder.Entity<User>()
                 .Property(u => u.Plan)
+                .HasColumnName("Plan")
                 .HasConversion<string>();
+
+            modelBuilder.Entity<User>()
+                .Property(u => u.createdAt)
+                .HasColumnName("createdAt");
+
+            modelBuilder.Entity<User>()
+                .Property(u => u.IsActive)
+                .HasColumnName("IsActive");
+
+            // Chat relationships
+            modelBuilder.Entity<Chat>()
+                .HasOne(c => c.Client)
+                .WithMany()
+                .HasForeignKey(c => c.ClientId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(m => m.Chat)
+                .WithMany(c => c.Messages)
+                .HasForeignKey(m => m.ChatId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(m => m.Sender)
+                .WithMany()
+                .HasForeignKey(m => m.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
 
     }

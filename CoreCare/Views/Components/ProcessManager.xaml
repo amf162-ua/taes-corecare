@@ -8,6 +8,33 @@
             <Rectangle Height="2" Width="100" Fill="Cyan" HorizontalAlignment="Center" Margin="0,5,0,10"/>
             <TextBlock Text="Controla el consumo de memoria de tu sistema en tiempo real" Foreground="Gray" HorizontalAlignment="Center" Margin="0,0,0,25"/>
 
+            <Border HorizontalAlignment="Center"
+                    Margin="0,0,0,25"
+                    Padding="12"
+                    Background="#101a2a"
+                    BorderBrush="#00FFFF"
+                    BorderThickness="2"
+                    CornerRadius="12">
+                <Button x:Name="BtnGenerateReport"
+                        Content="Generar informe"
+                        Click="BtnGenerateReport_Click"
+                        MinWidth="210"
+                        Padding="32,13"
+                        Background="#06384a"
+                        Foreground="White"
+                        BorderBrush="#7CFFFF"
+                        BorderThickness="1"
+                        FontSize="15"
+                        FontWeight="Black"
+                        Cursor="Hand">
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="8"/>
+                        </Style>
+                    </Button.Resources>
+                </Button>
+            </Border>
+
             <!-- Estadísticas: 3 Columnas Restauradas -->
             <Grid Margin="0,0,0,25" MaxWidth="900">
                 <Grid.ColumnDefinitions>

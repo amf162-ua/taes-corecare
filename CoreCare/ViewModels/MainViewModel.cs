@@ -130,14 +130,18 @@ namespace CoreCare.ViewModels
         public ObservableCollection<ProcessItem> Processes { get; set; } = new();
         public ObservableCollection<StartupItem> StartupPrograms { get; set; } = new(); // Tu módulo
         public ObservableCollection<RegistroBenchmark> HistoryItems { get; } = new();
-        public ObservableCollection<BenchmarkOptionItem> BenchmarkOptions { get; } = new()
-        {
-            new BenchmarkOptionItem { Code = "1", Label = "Monitor CPU" },
-            new BenchmarkOptionItem { Code = "2", Label = "Monitor GPU" },
-            new BenchmarkOptionItem { Code = "3", Label = "Monitor RAM" },
-            new BenchmarkOptionItem { Code = "4", Label = "Monitor Disco" },
-            new BenchmarkOptionItem { Code = "5", Label = "Monitor Todo" }
-        };
+        public static IReadOnlyList<BenchmarkOptionItem> DefaultBenchmarkOptions { get; } =
+            new List<BenchmarkOptionItem>
+            {
+                new BenchmarkOptionItem { Code = "1", Label = "Monitor CPU" },
+                new BenchmarkOptionItem { Code = "2", Label = "Monitor GPU" },
+                new BenchmarkOptionItem { Code = "3", Label = "Monitor RAM" },
+                new BenchmarkOptionItem { Code = "4", Label = "Monitor Disco" },
+                new BenchmarkOptionItem { Code = "5", Label = "Monitor Todo" }
+            };
+
+        public ObservableCollection<BenchmarkOptionItem> BenchmarkOptions { get; } =
+            new(DefaultBenchmarkOptions);
 
         // === CONSTRUCTOR UNIFICADO ===
         public MainViewModel()

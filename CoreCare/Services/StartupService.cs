@@ -15,41 +15,68 @@ namespace CoreCare.Services
 
         public List<StartupItem> GetStartupItems()
         {
-            var items = new List<StartupItem>();
+            try
+            {
+                var items = new List<StartupItem>();
 
-            // 1. Leemos los ACTIVOS (Puerta normal)
-            LeerClaveRegistro(Registry.CurrentUser, _runKey, items, true);
-            LeerClaveRegistro(Registry.CurrentUser, _wow64Key, items, true);
-            try { LeerClaveRegistro(Registry.LocalMachine, _runKey, items, true); } catch { }
+                // 1. Leemos los ACTIVOS (Puerta normal)
+                LeerClaveRegistro(Registry.CurrentUser, _runKey, items, true);
+                LeerClaveRegistro(Registry.CurrentUser, _wow64Key, items, true);
+                try { LeerClaveRegistro(Registry.LocalMachine, _runKey, items, true); }
+                catch (Exception ex)
+                {
+                    LoggingService.Warning("No se pudo leer programas de inicio en HKLM. Detalle: {Message}", ex.Message);
+                }
 
-            // 2. Leemos los DESACTIVADOS (Nuestra zona de cuarentena)
-            LeerClaveRegistro(Registry.CurrentUser, _coreCareDisabledKey, items, false);
+                // 2. Leemos los DESACTIVADOS (Nuestra zona de cuarentena)
+                LeerClaveRegistro(Registry.CurrentUser, _coreCareDisabledKey, items, false);
 
-            return items;
+                LoggingService.Information("Se obtuvieron {Count} programas de inicio", items.Count);
+                return items;
+            }
+            catch (Exception ex)
+            {
+                LoggingService.Error(ex, "Error obteniendo programas de inicio");
+                return new List<StartupItem>();
+            }
         }
 
         // Función auxiliar para no repetir código leyendo el registro
         private void LeerClaveRegistro(RegistryKey baseKey, string path, List<StartupItem> list, bool isEnabled)
         {
-            using (RegistryKey? key = baseKey.OpenSubKey(path))
+            try
             {
-                if (key != null)
+                using (RegistryKey? key = baseKey.OpenSubKey(path))
                 {
-                    foreach (string valueName in key.GetValueNames())
+                    if (key != null)
                     {
-                        if (!list.Exists(i => i.Name == valueName))
+                        foreach (string valueName in key.GetValueNames())
                         {
-                            string ruta = key.GetValue(valueName)?.ToString() ?? "Desconocido";
-                            list.Add(new StartupItem
+                            try
                             {
-                                Name = valueName,
-                                Path = ruta,
-                                IsEnabled = isEnabled,
-                                Publisher = ExtraerFabricante(ruta) // Llenamos la nueva propiedad
-                            });
+                                if (!list.Exists(i => i.Name == valueName))
+                                {
+                                    string ruta = key.GetValue(valueName)?.ToString() ?? "Desconocido";
+                                    list.Add(new StartupItem
+                                    {
+                                        Name = valueName,
+                                        Path = ruta,
+                                        IsEnabled = isEnabled,
+                                        Publisher = ExtraerFabricante(ruta) // Llenamos la nueva propiedad
+                                    });
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                LoggingService.Debug("Error leyendo entrada de registro: {EntryName}. Detalle: {Message}", valueName, ex.Message);
+                            }
                         }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                LoggingService.Debug("Error leyendo clave de registro: {Path}. Detalle: {Message}", path, ex.Message);
             }
         }
 
@@ -61,33 +88,51 @@ namespace CoreCare.Services
                 if (item.IsEnabled)
                 {
                     // Si estaba activo, lo DESACTIVAMOS (Lo movemos a CoreCare)
+                    LoggingService.Information("Desactivando programa de inicio: {Name}", item.Name);
                     MoverRegistro(_runKey, _coreCareDisabledKey, item.Name, item.Path);
+                    LoggingService.Information("Programa de inicio desactivado exitosamente: {Name}", item.Name);
                 }
                 else
                 {
                     // Si estaba desactivado, lo ACTIVAMOS (Lo devolvemos a Run)
+                    LoggingService.Information("Activando programa de inicio: {Name}", item.Name);
                     MoverRegistro(_coreCareDisabledKey, _runKey, item.Name, item.Path);
+                    LoggingService.Information("Programa de inicio activado exitosamente: {Name}", item.Name);
                 }
                 return true;
             }
-            catch
+            catch (System.UnauthorizedAccessException ex)
             {
+                LoggingService.Warning("Acceso denegado al modificar programa de inicio: {Name} - se requieren permisos de administrador. Detalle: {Message}", item.Name, ex.Message);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                LoggingService.Error(ex, "Error al cambiar estado del programa de inicio: {Name}", item.Name);
                 return false;
             }
         }
 
         private void MoverRegistro(string origen, string destino, string nombre, string ruta)
         {
-            // Borramos del origen
-            using (RegistryKey? keyOrigen = Registry.CurrentUser.OpenSubKey(origen, true))
+            try
             {
-                keyOrigen?.DeleteValue(nombre, false);
-            }
+                // Borramos del origen
+                using (RegistryKey? keyOrigen = Registry.CurrentUser.OpenSubKey(origen, true))
+                {
+                    keyOrigen?.DeleteValue(nombre, false);
+                }
 
-            // Escribimos en el destino (creando la carpeta CoreCare si no existe)
-            using (RegistryKey keyDestino = Registry.CurrentUser.CreateSubKey(destino, true))
+                // Escribimos en el destino (creando la carpeta CoreCare si no existe)
+                using (RegistryKey keyDestino = Registry.CurrentUser.CreateSubKey(destino, true))
+                {
+                    keyDestino.SetValue(nombre, ruta);
+                }
+            }
+            catch (Exception ex)
             {
-                keyDestino.SetValue(nombre, ruta);
+                LoggingService.Error(ex, "Error moviendo entrada de registro: {Name}", nombre);
+                throw;
             }
         }
 
@@ -116,7 +161,10 @@ namespace CoreCare.Services
                     return !string.IsNullOrWhiteSpace(info.CompanyName) ? info.CompanyName : "Desconocido";
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LoggingService.Debug("Error extrayendo fabricante de: {Path}. Detalle: {Message}", rutaBruta, ex.Message);
+            }
             return "Desconocido";
         }
     }

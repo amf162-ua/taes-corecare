@@ -10,8 +10,6 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <components:Header Grid.Row="0"/>
-
         <Grid Grid.Row="1" Margin="20">
             <components:CategoryBenchmarks />
         </Grid>
