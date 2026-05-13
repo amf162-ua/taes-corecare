@@ -12,14 +12,11 @@ namespace CoreCare.Converters
         {
             if (value is UserRole role)
             {
-                return role switch
-                {
-                    UserRole.Administrador => new SolidColorBrush(Color.FromArgb(255, 220, 20, 60)), // Crimson
-                    UserRole.Cliente => new SolidColorBrush(Color.FromArgb(255, 70, 130, 180)), // Steel Blue
-                    _ => new SolidColorBrush(Color.FromArgb(255, 128, 128, 128)) // Gray
-                };
+                return role == UserRole.Administrador 
+                    ? (Brush)new SolidColorBrush((Color)ColorConverter.ConvertFromString("#00FFFF"))  // Cyan
+                    : (Brush)new SolidColorBrush((Color)ColorConverter.ConvertFromString("#00FF00")); // Green
             }
-            return new SolidColorBrush(Colors.Gray);
+            return new SolidColorBrush((Color)ColorConverter.ConvertFromString("#717182")); // Muted
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

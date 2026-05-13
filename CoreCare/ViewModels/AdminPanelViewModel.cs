@@ -1,480 +1,583 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
+using System.Windows;
+using System.Windows.Input;
 using System.Windows.Threading;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
+using Microsoft.EntityFrameworkCore;
 using CoreCare.Data;
 using CoreCare.Models;
 using CoreCare.Services;
-using Microsoft.EntityFrameworkCore;
 
 namespace CoreCare.ViewModels
 {
-    public partial class ChatItemViewModel : ObservableObject
+    public class ChatViewModel : INotifyPropertyChanged
     {
-        private readonly Chat _chat;
-
-        public int Id => _chat.Id;
-        public string ClientName => _chat.Client?.username ?? _chat.Client?.name ?? "Usuario desconocido";
-        public string Subject => _chat.Subject;
-        public DateTime CreatedAt => _chat.CreatedAt;
-        public ChatStatus Status => _chat.Status;
-
-        [ObservableProperty]
+        private Chat _chat;
         private bool _hasUnreadMessages;
+        private int _unreadMessagesCount;
 
-        public ChatItemViewModel(Chat chat, bool hasUnreadMessages = false)
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        public Chat Chat
         {
-            _chat = chat;
-            _hasUnreadMessages = hasUnreadMessages;
+            get => _chat;
+            set
+            {
+                if (_chat == value)
+                {
+                    return;
+                }
+
+                _chat = value;
+                OnPropertyChanged(nameof(Chat));
+            }
         }
 
-        public Chat GetChat() => _chat;
-    }
-
-    public class ChatMessageViewModel : ObservableObject
-    {
-        public int Id { get; set; }
-        public string SenderName { get; set; } = string.Empty;
-        public string Message { get; set; } = string.Empty;
-        public DateTime SentAt { get; set; }
-        public bool IsOutgoing { get; set; }
-    }
-
-    public partial class UserItemViewModel : ObservableObject
-    {
-        private readonly User _user;
-
-        public int Id => _user.Id;
-        public string Name => _user.name;
-        public string Username => _user.username;
-        public string Email => _user.email;
-
-        [ObservableProperty]
-        private UserRole _role;
-
-        [ObservableProperty]
-        private TipoPlan _plan;
-
-        [ObservableProperty]
-        private bool _isActive;
-
-        public DateTime CreatedAt => _user.createdAt;
-
-        public UserItemViewModel(User user)
+        public ObservableCollection<ChatMessageViewModel> Messages { get; set; }
+        public bool HasUnreadMessages
         {
-            _user = user;
-            _role = user.Role;
-            _plan = user.Plan;
-            _isActive = user.IsActive;
+            get => _hasUnreadMessages;
+            set => SetUnreadState(value ? 1 : 0);
         }
 
-        public User GetUser() => _user;
+        public int UnreadMessagesCount
+        {
+            get => _unreadMessagesCount;
+            set => SetUnreadState(value);
+        }
+
+        public ChatViewModel()
+        {
+            Messages = new ObservableCollection<ChatMessageViewModel>();
+        }
+
+        private void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private void SetUnreadState(int unreadMessagesCount)
+        {
+            if (_unreadMessagesCount == unreadMessagesCount)
+            {
+                return;
+            }
+
+            _unreadMessagesCount = Math.Max(0, unreadMessagesCount);
+            _hasUnreadMessages = _unreadMessagesCount > 0;
+            OnPropertyChanged(nameof(UnreadMessagesCount));
+            OnPropertyChanged(nameof(HasUnreadMessages));
+        }
     }
 
-    public partial class AdminPanelViewModel : ObservableObject
+    public class ChatMessageViewModel
     {
-        private readonly DispatcherTimer _refreshTimer;
-        private int? _selectedChatId;
-        private bool _isRefreshingChats;
+        public ChatMessage Message { get; set; }
+        public string SenderName { get; set; }
+        public bool IsAdmin { get; set; }
+    }
 
-        [ObservableProperty]
-        private string _adminUserLabel = "Usuario: -";
+    public class UserViewModel
+    {
+        public User User { get; set; }
+        public string RoleDisplay => User.Role.ToString();
+        public string PlanDisplay => User.Plan.ToString();
+    }
 
-        [ObservableProperty]
-        private ObservableCollection<ChatItemViewModel> _openChats = new();
+    public class AdminPanelViewModel : INotifyPropertyChanged
+    {
+        private CoreCareDbContext _db;
+        private DispatcherTimer _pollTimer;
+        private string _messageInput;
+        private string _selectedRoleFilter = "Todos";
+        private string _userSearchFilter = "";
+        private ChatViewModel _selectedChat;
 
-        [ObservableProperty]
-        private ChatItemViewModel? _selectedChat;
+        public event PropertyChangedEventHandler PropertyChanged;
 
-        [ObservableProperty]
-        private bool _isDetailPaneOpen = false;
+        public ObservableCollection<ChatViewModel> Chats { get; set; }
+        public ObservableCollection<UserViewModel> FilteredUsers { get; set; }
 
-        [ObservableProperty]
-        private ObservableCollection<ChatMessageViewModel> _selectedChatMessages = new();
+        public ICommand SendMessageCommand { get; private set; }
+        public ICommand CloseSelectedChatCommand { get; private set; }
+        public ICommand DeleteUserCommand { get; private set; }
+        public ICommand ToggleUserRoleCommand { get; private set; }
+        public ICommand ToggleUserPlanCommand { get; private set; }
+        public ICommand ClearUserFiltersCommand { get; private set; }
 
-        [ObservableProperty]
-        private string _newMessageText = string.Empty;
+        public string MessageInput
+        {
+            get => _messageInput;
+            set
+            {
+                if (_messageInput == value)
+                {
+                    return;
+                }
 
-        [ObservableProperty]
-        private int _pendingChatsCount = 0;
+                _messageInput = value;
+                OnPropertyChanged(nameof(MessageInput));
+                CommandManager.InvalidateRequerySuggested();
+            }
+        }
 
-        // User Management Properties
-        [ObservableProperty]
-        private ObservableCollection<UserItemViewModel> _allUsers = new();
+        public string UserSearchFilter
+        {
+            get => _userSearchFilter;
+            set
+            {
+                if (_userSearchFilter == value)
+                {
+                    return;
+                }
 
-        [ObservableProperty]
-        private ObservableCollection<UserItemViewModel> _filteredUsers = new();
+                _userSearchFilter = value;
+                RefreshUserList();
+                OnPropertyChanged(nameof(UserSearchFilter));
+            }
+        }
 
-        [ObservableProperty]
-        private string _userSearchText = string.Empty;
+        public string SelectedRoleFilter
+        {
+            get => _selectedRoleFilter;
+            set
+            {
+                if (_selectedRoleFilter == value)
+                {
+                    return;
+                }
 
-        [ObservableProperty]
-        private UserRole? _roleFilter = null;
+                _selectedRoleFilter = string.IsNullOrWhiteSpace(value) ? "Todos" : value;
+                RefreshUserList();
+                OnPropertyChanged(nameof(SelectedRoleFilter));
+            }
+        }
 
-        [ObservableProperty]
-        private UserItemViewModel? _selectedUser;
+        public int TotalFilteredUsers => FilteredUsers.Count;
 
-        public bool HasActiveChat => _selectedChatId.HasValue;
+        public ChatViewModel SelectedChat
+        {
+            get => _selectedChat;
+            set
+            {
+                try
+                {
+                    if (_selectedChat == value)
+                    {
+                        return;
+                    }
+
+                    _selectedChat = value;
+                    OnPropertyChanged(nameof(SelectedChat));
+                    CommandManager.InvalidateRequerySuggested();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ERROR in SelectedChat setter: {ex}");
+                    Console.WriteLine($"ERROR in SelectedChat setter: {ex}");
+                }
+            }
+        }
 
         public AdminPanelViewModel()
         {
-            UpdateAdminLabel();
-            LoadOpenChats();
-            LoadAllUsers();
+            _db = new CoreCareDbContext();
+            Chats = new ObservableCollection<ChatViewModel>();
+            FilteredUsers = new ObservableCollection<UserViewModel>();
 
-            // Setup polling for new messages (~3 seconds)
-            _refreshTimer = new DispatcherTimer();
-            _refreshTimer.Interval = TimeSpan.FromSeconds(3);
-            _refreshTimer.Tick += (_, _) => RefreshChats();
-            _refreshTimer.Start();
+            InitializeCommands();
+            LoadChats();
+            LoadUsers();
+            StartPolling();
         }
 
-        private void UpdateAdminLabel()
+        private void InitializeCommands()
         {
-            if (SessionService.CurrentUser != null)
-            {
-                var username = string.IsNullOrWhiteSpace(SessionService.CurrentUser.username) 
-                    ? SessionService.CurrentUser.name 
-                    : SessionService.CurrentUser.username;
-                AdminUserLabel = $"Usuario: {username} (Administrador)";
-            }
+            SendMessageCommand = new RelayCommand(SendMessage, CanSendMessage);
+            CloseSelectedChatCommand = new RelayCommand(CloseSelectedChat, CanCloseChat);
+            DeleteUserCommand = new RelayCommand(DeleteUser, CanDeleteUser);
+            ToggleUserRoleCommand = new RelayCommand(ToggleUserRole, CanModifyUser);
+            ToggleUserPlanCommand = new RelayCommand(ToggleUserPlan, CanModifyUser);
+            ClearUserFiltersCommand = new RelayCommand(ClearUserFilters);
         }
 
-        private void LoadOpenChats()
+        private void LoadChats()
         {
             try
             {
-                using var db = new CoreCareDbContext();
+                var selectedChatId = SelectedChat?.Chat?.Id;
+                var selectedChatVm = SelectedChat;
+
+                Chats.Clear();
                 
-                var openChats = db.Chats
-                    .Where(c => c.Status == ChatStatus.Abierto)
+                // Recreate context to prevent connection issues
+                _db?.Dispose();
+                _db = new CoreCareDbContext();
+                
+                // Single query with all eager loading to prevent null references
+                var openChats = _db.Chats
+                    .AsNoTracking()
                     .Include(c => c.Client)
                     .Include(c => c.Messages)
+                        .ThenInclude(m => m.Sender)
+                    .Where(c => c.Status == ChatStatus.Abierto)
                     .OrderByDescending(c => c.CreatedAt)
                     .ToList();
 
-                OpenChats.Clear();
-                
                 foreach (var chat in openChats)
                 {
-                    // Check if there are unread messages (messages from client that come after admin's last message)
-                    var hasUnread = chat.Messages
-                        .Where(m => m.SenderId == chat.ClientId)
-                        .OrderByDescending(m => m.SentAt)
-                        .FirstOrDefault() is ChatMessage lastClientMsg &&
-                        (chat.Messages.Where(m => m.SenderId != chat.ClientId).OrderByDescending(m => m.SentAt).FirstOrDefault()?.SentAt ?? DateTime.MinValue) < lastClientMsg.SentAt;
-
-                    var viewModel = new ChatItemViewModel(chat, hasUnread);
-                    OpenChats.Add(viewModel);
-                }
-
-                PendingChatsCount = openChats.Count;
-
-                if (_selectedChatId.HasValue)
-                {
-                    SelectedChat = OpenChats.FirstOrDefault(chat => chat.Id == _selectedChatId.Value);
-                    if (SelectedChat != null)
+                    try
                     {
-                        LoadSelectedChatMessages();
+                        var chatVm = selectedChatVm != null && chat.Id == selectedChatId
+                            ? selectedChatVm
+                            : new ChatViewModel();
+
+                        chatVm.Chat = chat;
+                        chatVm.UnreadMessagesCount = CountUnreadMessages(chat.Messages?.ToList() ?? new List<ChatMessage>());
+                        chatVm.Messages.Clear();
+
+                        // Use the already-loaded Messages from the chat
+                        if (chat.Messages != null)
+                        {
+                            foreach (var msg in chat.Messages.OrderBy(m => m.SentAt))
+                            {
+                                try
+                                {
+                                    chatVm.Messages.Add(new ChatMessageViewModel
+                                    {
+                                        Message = msg,
+                                        SenderName = msg.Sender?.name ?? "Unknown",
+                                        IsAdmin = msg.Sender?.Role == UserRole.Administrador
+                                    });
+                                }
+                                catch (Exception msgEx)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"ERROR adding message to VM: {msgEx}");
+                                }
+                            }
+                        }
+
+                        Chats.Add(chatVm);
+                    }
+                    catch (Exception chatEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"ERROR processing chat: {chatEx}");
                     }
                 }
 
-                OnPropertyChanged(nameof(HasActiveChat));
+                if (selectedChatId.HasValue)
+                {
+                    var refreshedSelectedChat = Chats.FirstOrDefault(chat => chat.Chat.Id == selectedChatId.Value);
+                    if (!ReferenceEquals(SelectedChat, refreshedSelectedChat))
+                    {
+                        SelectedChat = refreshedSelectedChat;
+                    }
+                    else
+                    {
+                        OnPropertyChanged(nameof(SelectedChat));
+                        CommandManager.InvalidateRequerySuggested();
+                    }
+                }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading open chats: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"ERROR in LoadChats: {ex}");
+                MessageBox.Show($"Error al cargar chats: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        private void RefreshChats()
+        private int CountUnreadMessages(List<ChatMessage> messages)
         {
-            if (SelectedChat != null)
+            if (messages.Count == 0) return 0;
+
+            var lastAdminReplyAt = messages
+                .Where(message => message.Sender?.Role == UserRole.Administrador)
+                .OrderByDescending(message => message.SentAt)
+                .Select(message => message.SentAt)
+                .FirstOrDefault();
+
+            if (lastAdminReplyAt == default)
             {
-                _selectedChatId = SelectedChat.Id;
+                return messages.Count(message => message.Sender?.Role == UserRole.Cliente);
             }
 
-            _isRefreshingChats = true;
+            return messages.Count(message =>
+                message.Sender?.Role == UserRole.Cliente &&
+                message.SentAt > lastAdminReplyAt);
+        }
+
+        private void LoadUsers()
+        {
             try
             {
-                LoadOpenChats();
+                RefreshUserList();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading users: {ex.Message}");
+            }
+        }
 
-                // If a chat is selected, refresh its messages
-                if (SelectedChat != null)
+        private void RefreshUserList()
+        {
+            try
+            {
+                FilteredUsers.Clear();
+
+                var query = _db.Users.AsQueryable();
+
+                // Apply search filter
+                if (!string.IsNullOrEmpty(UserSearchFilter))
                 {
-                    LoadSelectedChatMessages();
+                    var searchTerm = UserSearchFilter.ToLower();
+                    query = query.Where(u =>
+                        u.username.ToLower().Contains(searchTerm) ||
+                        u.name.ToLower().Contains(searchTerm) ||
+                        u.email.ToLower().Contains(searchTerm)
+                    );
                 }
+
+                // Apply role filter
+                if (SelectedRoleFilter == "Cliente")
+                {
+                    query = query.Where(u => u.Role == UserRole.Cliente);
+                }
+                else if (SelectedRoleFilter == "Administrador")
+                {
+                    query = query.Where(u => u.Role == UserRole.Administrador);
+                }
+
+                var users = query.OrderBy(u => u.username).ToList();
+
+                foreach (var user in users)
+                {
+                    FilteredUsers.Add(new UserViewModel { User = user });
+                }
+
+                OnPropertyChanged(nameof(TotalFilteredUsers));
             }
-            finally
+            catch (Exception ex)
             {
-                _isRefreshingChats = false;
+                Console.WriteLine($"Error refreshing user list: {ex.Message}");
             }
         }
 
-        partial void OnSelectedChatChanged(ChatItemViewModel? value)
+        private void SendMessage(object parameter)
         {
-            if (value == null && _isRefreshingChats && _selectedChatId.HasValue)
-            {
+            if (SelectedChat == null || string.IsNullOrWhiteSpace(MessageInput))
                 return;
-            }
-
-            _selectedChatId = value?.Id;
-            OnPropertyChanged(nameof(HasActiveChat));
-
-            if (value != null)
-            {
-                IsDetailPaneOpen = true;
-                LoadSelectedChatMessages();
-                // Mark as read
-                value.HasUnreadMessages = false;
-            }
-            else
-            {
-                IsDetailPaneOpen = false;
-                SelectedChatMessages.Clear();
-                NewMessageText = string.Empty;
-            }
-        }
-
-        private void LoadSelectedChatMessages()
-        {
-            if (SelectedChat == null) return;
 
             try
             {
-                using var db = new CoreCareDbContext();
-                
-                var chat = db.Chats
-                    .Include(c => c.Messages)
-                    .ThenInclude(m => m.Sender)
-                    .Include(c => c.Client)
-                    .FirstOrDefault(c => c.Id == SelectedChat.Id);
+                var currentChatId = SelectedChat.Chat.Id;
+                var messageText = MessageInput;
 
-                if (chat == null) return;
-
-                SelectedChatMessages.Clear();
-
-                foreach (var message in chat.Messages.OrderBy(m => m.SentAt))
+                // Use a fresh context for this operation
+                using (var freshDb = new CoreCareDbContext())
                 {
-                    var viewModel = new ChatMessageViewModel
+                    var chat = freshDb.Chats.FirstOrDefault(c => c.Id == currentChatId);
+                    if (chat == null)
                     {
-                        Id = message.Id,
-                        SenderName = message.Sender?.username ?? message.Sender?.name ?? "Usuario desconocido",
-                        Message = message.Message,
-                        SentAt = message.SentAt,
-                        IsOutgoing = message.SenderId == SessionService.CurrentUser?.Id
+                        MessageBox.Show("El chat no existe.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    var currentUser = SessionService.CurrentUser;
+                    if (currentUser == null)
+                    {
+                        MessageBox.Show("Sesión expirada.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    var newMessage = new ChatMessage
+                    {
+                        ChatId = chat.Id,
+                        SenderId = currentUser.Id,
+                        Message = messageText,
+                        SentAt = DateTime.UtcNow
                     };
 
-                    SelectedChatMessages.Add(viewModel);
+                    freshDb.ChatMessages.Add(newMessage);
+                    freshDb.SaveChanges();
                 }
+
+                MessageInput = "";
+                LoadChats();
+                RefreshChatSelection();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading chat messages: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"ERROR sending message: {ex}");
+                MessageBox.Show($"Error al enviar mensaje: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        [RelayCommand]
-        private void SendMessage()
+        private bool CanSendMessage(object parameter)
         {
-            if (SelectedChat == null || string.IsNullOrWhiteSpace(NewMessageText))
-                return;
-
-            try
-            {
-                using var db = new CoreCareDbContext();
-
-                var message = new ChatMessage
-                {
-                    ChatId = SelectedChat.Id,
-                    SenderId = SessionService.CurrentUser?.Id ?? 0,
-                    Message = NewMessageText,
-                    SentAt = DateTime.UtcNow
-                };
-
-                db.ChatMessages.Add(message);
-                db.SaveChanges();
-
-                // Add to UI
-                var messageVM = new ChatMessageViewModel
-                {
-                    Id = message.Id,
-                    SenderName = SessionService.CurrentUser?.username ?? SessionService.CurrentUser?.name ?? "Administrador",
-                    Message = message.Message,
-                    SentAt = message.SentAt,
-                    IsOutgoing = true
-                };
-
-                SelectedChatMessages.Add(messageVM);
-                NewMessageText = string.Empty;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error sending message: {ex.Message}");
-            }
+            return SelectedChat != null && !string.IsNullOrWhiteSpace(MessageInput);
         }
 
-        [RelayCommand]
-        private void CloseSelectedChat()
+        private void CloseSelectedChat(object parameter)
         {
             if (SelectedChat == null) return;
 
             try
             {
-                using var db = new CoreCareDbContext();
-
-                var chat = db.Chats.FirstOrDefault(c => c.Id == SelectedChat.Id);
+                var chat = _db.Chats.FirstOrDefault(c => c.Id == SelectedChat.Chat.Id);
                 if (chat != null)
                 {
                     chat.Status = ChatStatus.Cerrado;
                     chat.ClosedAt = DateTime.UtcNow;
-                    db.SaveChanges();
+                    _db.SaveChanges();
+                    LoadChats();
+                    SelectedChat = null;
                 }
-
-                // Clear selection and reload
-                SelectedChat = null;
-                LoadOpenChats();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error closing chat: {ex.Message}");
+                Console.WriteLine($"Error closing chat: {ex.Message}");
             }
         }
 
-        // ===== USER MANAGEMENT =====
+        private bool CanCloseChat(object parameter)
+        {
+            return SelectedChat != null;
+        }
 
-        private void LoadAllUsers()
+        private void DeleteUser(object parameter)
+        {
+            if (parameter is UserViewModel userVm)
+            {
+                try
+                {
+                    var user = _db.Users.FirstOrDefault(u => u.Id == userVm.User.Id);
+                    if (user != null)
+                    {
+                        _db.Users.Remove(user);
+                        _db.SaveChanges();
+                        RefreshUserList();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error deleting user: {ex.Message}");
+                }
+            }
+        }
+
+        private bool CanDeleteUser(object parameter)
+        {
+            return parameter is UserViewModel;
+        }
+
+        private void ToggleUserRole(object parameter)
+        {
+            if (parameter is UserViewModel userVm)
+            {
+                try
+                {
+                    var user = _db.Users.FirstOrDefault(u => u.Id == userVm.User.Id);
+                    if (user != null)
+                    {
+                        user.Role = user.Role == UserRole.Administrador ? UserRole.Cliente : UserRole.Administrador;
+                        _db.SaveChanges();
+                        RefreshUserList();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error toggling user role: {ex.Message}");
+                }
+            }
+        }
+
+        private bool CanModifyUser(object parameter)
+        {
+            return parameter is UserViewModel;
+        }
+
+        private void ToggleUserPlan(object parameter)
+        {
+            if (parameter is UserViewModel userVm)
+            {
+                try
+                {
+                    var user = _db.Users.FirstOrDefault(u => u.Id == userVm.User.Id);
+                    if (user != null)
+                    {
+                        user.Plan = user.Plan == TipoPlan.Basico ? TipoPlan.Premium : TipoPlan.Basico;
+                        _db.SaveChanges();
+                        RefreshUserList();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error toggling user plan: {ex.Message}");
+                }
+            }
+        }
+
+        private void ClearUserFilters(object parameter)
+        {
+            UserSearchFilter = "";
+            SelectedRoleFilter = "Todos";
+            RefreshUserList();
+        }
+
+        private void StartPolling()
+        {
+            _pollTimer = new DispatcherTimer();
+            _pollTimer.Interval = TimeSpan.FromSeconds(3);
+            _pollTimer.Tick += (s, e) =>
+            {
+                try
+                {
+                    LoadChats();
+                    RefreshChatSelection();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ERROR in polling timer: {ex}");
+                    Console.WriteLine($"Error in polling timer: {ex.Message}");
+                }
+            };
+            _pollTimer.Start();
+        }
+
+        private void RefreshChatSelection()
         {
             try
             {
-                using var db = new CoreCareDbContext();
-                var users = db.Users.OrderBy(u => u.username).ToList();
-
-                AllUsers.Clear();
-                foreach (var user in users)
+                if (SelectedChat != null)
                 {
-                    AllUsers.Add(new UserItemViewModel(user));
-                }
-
-                ApplyUserFilters();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error loading users: {ex.Message}");
-            }
-        }
-
-        partial void OnUserSearchTextChanged(string value)
-        {
-            ApplyUserFilters();
-        }
-
-        partial void OnRoleFilterChanged(UserRole? value)
-        {
-            ApplyUserFilters();
-        }
-
-        private void ApplyUserFilters()
-        {
-            var filtered = AllUsers.AsEnumerable();
-
-            // Filter by username or email
-            if (!string.IsNullOrWhiteSpace(UserSearchText))
-            {
-                var search = UserSearchText.ToLower();
-                filtered = filtered.Where(u => 
-                    u.Username.ToLower().Contains(search) || 
-                    u.Email.ToLower().Contains(search) ||
-                    u.Name.ToLower().Contains(search));
-            }
-
-            // Filter by role
-            if (RoleFilter.HasValue)
-            {
-                filtered = filtered.Where(u => u.Role == RoleFilter.Value);
-            }
-
-            FilteredUsers.Clear();
-            foreach (var user in filtered)
-            {
-                FilteredUsers.Add(user);
-            }
-        }
-
-        [RelayCommand]
-        private void DeleteUser(UserItemViewModel? user)
-        {
-            if (user == null) return;
-
-            try
-            {
-                using var db = new CoreCareDbContext();
-                var dbUser = db.Users.FirstOrDefault(u => u.Id == user.Id);
-                if (dbUser != null)
-                {
-                    db.Users.Remove(dbUser);
-                    db.SaveChanges();
-                    LoadAllUsers();
+                    // Find the updated chat with the same ID
+                    var updatedChat = Chats.FirstOrDefault(c => c.Chat.Id == SelectedChat.Chat.Id);
+                    if (updatedChat != null && updatedChat != SelectedChat)
+                    {
+                        // Only update if it's a different instance
+                        SelectedChat = updatedChat;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error deleting user: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"ERROR in RefreshChatSelection: {ex}");
+                Console.WriteLine($"Error in RefreshChatSelection: {ex.Message}");
             }
         }
 
-        [RelayCommand]
-        private void ToggleUserRole(UserItemViewModel? user)
+        private void OnPropertyChanged(string propertyName)
         {
-            if (user == null) return;
-
-            try
-            {
-                using var db = new CoreCareDbContext();
-                var dbUser = db.Users.FirstOrDefault(u => u.Id == user.Id);
-                if (dbUser != null)
-                {
-                    dbUser.Role = dbUser.Role == UserRole.Cliente ? UserRole.Administrador : UserRole.Cliente;
-                    db.SaveChanges();
-                    user.Role = dbUser.Role;
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error toggling user role: {ex.Message}");
-            }
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        [RelayCommand]
-        private void ToggleUserPlan(UserItemViewModel? user)
+        public void Dispose()
         {
-            if (user == null) return;
-
-            try
-            {
-                using var db = new CoreCareDbContext();
-                var dbUser = db.Users.FirstOrDefault(u => u.Id == user.Id);
-                if (dbUser != null)
-                {
-                    dbUser.Plan = dbUser.Plan == TipoPlan.Basico ? TipoPlan.Premium : TipoPlan.Basico;
-                    db.SaveChanges();
-                    user.Plan = dbUser.Plan;
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error toggling user plan: {ex.Message}");
-            }
-        }
-
-        [RelayCommand]
-        private void ClearUserFilters()
-        {
-            UserSearchText = string.Empty;
-            RoleFilter = null;
+            _pollTimer?.Stop();
+            _db?.Dispose();
         }
     }
 }

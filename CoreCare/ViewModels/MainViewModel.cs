@@ -1,37 +1,42 @@
-using System;
-using OxyPlot;
-using OxyPlot.Series;
-using OxyPlot.Axes;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using CoreCare.Data;
 using CoreCare.Models;
+using CoreCare.Orchestrators;
 using CoreCare.Services;
 using CoreCare.Views;
-using CoreCare.Data;
-using CoreCare.Orchestrators;
-using System.Collections.ObjectModel;
-using System.Windows.Threading;
-using CommunityToolkit.Mvvm.Input;
-using System.Windows;
+using Microsoft.EntityFrameworkCore.Migrations;
+using OxyPlot;
+using OxyPlot.Axes;
+using OxyPlot.Series;
 using QuestPDF.Fluent;
+using System;
+using System.Collections.ObjectModel;
 using System.Linq;
-using Microsoft.EntityFrameworkCore;
-using System.Windows.Media;
 using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Threading;
+using CoreCare.Views.Modals;
 
 namespace CoreCare.ViewModels
 {
     public partial class MainViewModel : ObservableObject
     {
+        // === SERVICIOS COMBINADOS ===
         private readonly HardwareMonitorService _hardwareService;
         private readonly ProcessService _processService;
+        private readonly StartupService _startupService;
         private readonly GeminiAIService _geminiService;
         private readonly SystemSpecsService _systemSpecsService;
         private readonly HardwareUpgradeAdvisorService _upgradeAdvisorService;
         private readonly DispatcherTimer _refreshTimer;
         private readonly DispatcherTimer _supportRefreshTimer;
 
+        // === PROPIEDADES OBSERVABLES (MAIN + RAMA ARRANQUE) ===
         [ObservableProperty]
-        private string _cpuDisplay = "N/A";
+        private string _cpuDisplay = "Cargando...";
 
         [ObservableProperty]
         private bool _isBusy;
@@ -67,9 +72,7 @@ namespace CoreCare.ViewModels
         private bool _isCreatingSupportChat;
 
         public bool IsAuthenticated => SessionService.CurrentUser != null;
-
         public bool IsAdministrador => SessionService.CurrentUser?.Role == UserRole.Administrador;
-
         public bool IsCliente => SessionService.CurrentUser?.Role == UserRole.Cliente;
 
         public string CurrentUserDisplayName => SessionService.CurrentUser == null
@@ -95,8 +98,7 @@ namespace CoreCare.ViewModels
         [ObservableProperty]
         private PlotModel? _scoreBarPlotModel;
 
-        // last subset used for plotting (most recent up to 10 runs)
-        public List<RegistroBenchmark> LastHistorySubset { get; private set; } = new();
+        public System.Collections.Generic.List<RegistroBenchmark> LastHistorySubset { get; private set; } = new();
 
         [ObservableProperty]
         private string _historyHoverInfo = string.Empty;
@@ -113,10 +115,8 @@ namespace CoreCare.ViewModels
         [ObservableProperty]
         private string _kpiConsistency = "—";
 
-        // heatmap: list of (MetricName, List<values>)
-        public List<(string Name, List<double> Values)> HeatmapData { get; private set; } = new();
+        public System.Collections.Generic.List<(string Name, System.Collections.Generic.List<double> Values)> HeatmapData { get; private set; } = new();
 
-        // small multiples: store mini chart models
         [ObservableProperty]
         private PlotModel? _miniCpuPlot;
 
@@ -146,24 +146,36 @@ namespace CoreCare.ViewModels
 
         public int BenchmarkDurationSeconds { get; } = 8;
 
+        // === LISTAS COMBINADAS ===
         public ObservableCollection<ProcessItem> Processes { get; set; } = new();
+        public ObservableCollection<StartupItem> StartupPrograms { get; set; } = new(); // Tu módulo
         public ObservableCollection<RegistroBenchmark> HistoryItems { get; } = new();
-        public ObservableCollection<BenchmarkOptionItem> BenchmarkOptions { get; } = new()
-        {
-            new BenchmarkOptionItem { Code = "1", Label = "Monitor CPU" },
-            new BenchmarkOptionItem { Code = "2", Label = "Monitor GPU" },
-            new BenchmarkOptionItem { Code = "3", Label = "Monitor RAM" },
-            new BenchmarkOptionItem { Code = "4", Label = "Monitor Disco" },
-            new BenchmarkOptionItem { Code = "5", Label = "Monitor Todo" }
-        };
+        public static IReadOnlyList<BenchmarkOptionItem> DefaultBenchmarkOptions { get; } =
+            new List<BenchmarkOptionItem>
+            {
+                new BenchmarkOptionItem { Code = "1", Label = "Monitor CPU" },
+                new BenchmarkOptionItem { Code = "2", Label = "Monitor GPU" },
+                new BenchmarkOptionItem { Code = "3", Label = "Monitor RAM" },
+                new BenchmarkOptionItem { Code = "4", Label = "Monitor Disco" },
+                new BenchmarkOptionItem { Code = "5", Label = "Monitor Todo" }
+            };
 
+        public ObservableCollection<BenchmarkOptionItem> BenchmarkOptions { get; } =
+            new(DefaultBenchmarkOptions);
+
+        // === CONSTRUCTOR UNIFICADO ===
         public MainViewModel()
         {
             _hardwareService = App.Monitor;
             _processService = App.Processes;
+            _startupService = new StartupService(); // Tu servicio
+
             _geminiService = new GeminiAIService();
             _systemSpecsService = new SystemSpecsService();
             _upgradeAdvisorService = new HardwareUpgradeAdvisorService();
+
+            // Cargamos tus programas de arranque
+            LoadStartupPrograms();
 
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
             _refreshTimer.Tick += (s, e) => UpdateAllData();
@@ -227,6 +239,18 @@ namespace CoreCare.ViewModels
             OnPropertyChanged(nameof(CanSendSupportMessage));
         }
 
+        // === MÓDULO ARRANQUE (TU CÓDIGO) ===
+        private void LoadStartupPrograms()
+        {
+            var startupList = _startupService.GetStartupItems();
+            StartupPrograms.Clear();
+            foreach (var item in startupList)
+            {
+                StartupPrograms.Add(item);
+            }
+        }
+
+        // === MÓDULO TELEMETRÍA (UNIFICADO) ===
         private void UpdateAllData()
         {
             try
@@ -253,10 +277,7 @@ namespace CoreCare.ViewModels
         [RelayCommand]
         private async Task RunBenchmarkAsync()
         {
-            if (IsBenchmarkRunning)
-            {
-                return;
-            }
+            if (IsBenchmarkRunning) return;
 
             if (SelectedBenchmarkOption == null)
             {
@@ -336,12 +357,11 @@ namespace CoreCare.ViewModels
 
             if (result == MessageBoxResult.Yes)
             {
-                // SOLUCIÓN 3: El método en ProcessService se llama KillProcess, no TerminateProcess
                 bool ok = _processService.KillProcess(process.Id);
 
                 if (ok)
                 {
-                    UpdateAllData();
+                    UpdateAllData(); // Llamamos al unificado
                 }
                 else
                 {
@@ -350,13 +370,85 @@ namespace CoreCare.ViewModels
             }
         }
 
+        // === COMANDOS MÓDULO ARRANQUE (TU CÓDIGO) ===
+        [RelayCommand]
+        public void ToggleStartup(StartupItem item)
+        {
+            if (item == null) return;
+
+            string accion = item.IsEnabled ? "desactivar" : "activar";
+
+            var result = MessageBox.Show(
+                $"¿Seguro que quieres {accion} el inicio de {item.Name}?",
+                "Modificar Arranque",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Information);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                bool ok = _startupService.ToggleStartupProgram(item);
+
+                if (ok)
+                {
+                    LoadStartupPrograms();
+                }
+                else
+                {
+                    MessageBox.Show("No se pudo modificar. Es posible que requieras ejecutar CoreCare como Administrador.");
+                }
+            }
+        }
+
+        private static System.Collections.Generic.List<Sponsor> GetFixedSponsors()
+        {
+            return new System.Collections.Generic.List<Sponsor>
+            {
+                new Sponsor { Name = "PC Componentes", Message = "¡Encuentra los mejores componentes al mejor precio!", Website = "https://www.pccomponentes.com" },
+                new Sponsor { Name = "Amazon", Message = "Envío rápido en miles de productos de hardware.", Website = "https://www.amazon.es" },
+                new Sponsor { Name = "Coolmod", Message = "Especialistas en refrigeración y modding.", Website = "https://www.coolmod.com" }
+            };
+        }
+
+        [RelayCommand]
+        public void OpenLocation(StartupItem item)
+        {
+            if (item == null || string.IsNullOrWhiteSpace(item.Path)) return;
+
+            try
+            {
+                string rutaLimpia = item.Path.Replace("\"", "");
+                if (rutaLimpia.Contains(" -")) rutaLimpia = rutaLimpia.Substring(0, rutaLimpia.IndexOf(" -"));
+                if (rutaLimpia.Contains(" /")) rutaLimpia = rutaLimpia.Substring(0, rutaLimpia.IndexOf(" /"));
+
+                rutaLimpia = rutaLimpia.Trim();
+                rutaLimpia = Environment.ExpandEnvironmentVariables(rutaLimpia);
+
+                System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{rutaLimpia}\"");
+            }
+            catch
+            {
+                MessageBox.Show("No se pudo abrir la ubicación.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        // === RESTO DE COMANDOS DE MAIN (PDF, IA, ETC) ===
         [RelayCommand]
         public async Task GenerateReportAsync()
         {
-            if (IsBusy)
+            if (IsBusy) return;
+
+            var benchmarkSelectionWindow = new ReportBenchmarkSelectionWindow
+            {
+                Owner = Application.Current?.MainWindow,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+
+            if (benchmarkSelectionWindow.ShowDialog() != true)
             {
                 return;
             }
+
+            var selectedReportBenchmarks = benchmarkSelectionWindow.SelectedBenchmarks.ToList();
 
             var saveDialog = new Microsoft.Win32.SaveFileDialog
             {
@@ -365,16 +457,20 @@ namespace CoreCare.ViewModels
                 Filter = "PDF files (*.pdf)|*.pdf"
             };
 
-            if (saveDialog.ShowDialog() != true)
-            {
-                return;
-            }
+            if (saveDialog.ShowDialog() != true) return;
 
             LoadingWindow? loadingWindow = null;
             IsBusy = true;
+            var wasRefreshTimerEnabled = _refreshTimer.IsEnabled;
+            var reportBenchmarkResults = new System.Collections.Generic.List<RegistroBenchmark>();
 
             try
             {
+                if (wasRefreshTimerEnabled)
+                {
+                    _refreshTimer.Stop();
+                }
+
                 loadingWindow = new LoadingWindow
                 {
                     Owner = Application.Current?.MainWindow,
@@ -382,7 +478,21 @@ namespace CoreCare.ViewModels
                 };
                 loadingWindow.Show();
 
-                loadingWindow.UpdateProgress(0, "Preparando informe...");
+                if (selectedReportBenchmarks.Count > 0)
+                {
+                    for (int i = 0; i < selectedReportBenchmarks.Count; i++)
+                    {
+                        var selectedBenchmark = selectedReportBenchmarks[i];
+                        var percent = 5 + (int)Math.Round((double)i / selectedReportBenchmarks.Count * 30);
+                        loadingWindow.UpdateProgress(percent, $"Ejecutando benchmark {selectedBenchmark.Label} ({i + 1}/{selectedReportBenchmarks.Count})...");
+                        var registro = await RunAndSaveReportBenchmarkAsync(selectedBenchmark);
+                        reportBenchmarkResults.Add(registro);
+                    }
+
+                    LoadHistory();
+                }
+
+                loadingWindow.UpdateProgress(selectedReportBenchmarks.Count > 0 ? 35 : 0, "Preparando informe...");
 
                 var hardwareTask = Task.Run(() =>
                 {
@@ -393,14 +503,14 @@ namespace CoreCare.ViewModels
 
                 await Task.WhenAll(hardwareTask, specsTask);
 
-                loadingWindow.UpdateProgress(25, "Analizando telemetría...");
+                loadingWindow.UpdateProgress(selectedReportBenchmarks.Count > 0 ? 50 : 25, "Analizando telemetría...");
 
                 var systemSpecs = specsTask.Result;
                 var telemetryWarnings = new System.Collections.Generic.List<string>();
                 var telemetryData = BuildReportTelemetry(systemSpecs, telemetryWarnings);
                 var (upgradeScores, upgradeRecommendations) = _upgradeAdvisorService.Analyze(systemSpecs, telemetryData);
 
-                loadingWindow.UpdateProgress(45, "Preparando recomendaciones...");
+                loadingWindow.UpdateProgress(selectedReportBenchmarks.Count > 0 ? 65 : 45, "Preparando recomendaciones...");
 
                 var (recommendations, generatedLocally) = await GetFastRecommendationsAsync(telemetryData, systemSpecs);
 
@@ -417,7 +527,9 @@ namespace CoreCare.ViewModels
                     RecommendationsGeneratedLocally = generatedLocally,
                     UpgradeScores = upgradeScores,
                     UpgradeRecommendations = upgradeRecommendations,
-                    TelemetryData = telemetryData
+                    BenchmarkResults = reportBenchmarkResults,
+                    TelemetryData = telemetryData,
+                    Sponsors = GetFixedSponsors()
                 };
 
                 var document = new ReportDocument(data);
@@ -435,47 +547,97 @@ namespace CoreCare.ViewModels
             finally
             {
                 loadingWindow?.Close();
+                if (wasRefreshTimerEnabled)
+                {
+                    _refreshTimer.Start();
+                    UpdateAllData();
+                }
+
                 IsBusy = false;
             }
         }
 
+        private async Task<RegistroBenchmark> RunAndSaveReportBenchmarkAsync(ReportBenchmarkSelectionItem selectedBenchmark)
+        {
+            var stressWorker = new StressWorker();
+            var orchestrator = new BenchmarkOrchestrator(_hardwareService, stressWorker);
+            var options = MapBenchmarkOption(selectedBenchmark.Code);
+
+            var benchmarkTask = orchestrator.RunBenchmarkAsync(options, selectedBenchmark.DurationSeconds);
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(selectedBenchmark.DurationSeconds + 20));
+
+            var completedTask = await Task.WhenAny(benchmarkTask, timeoutTask);
+            if (completedTask != benchmarkTask)
+            {
+                stressWorker.Stop();
+                throw new TimeoutException($"El benchmark {selectedBenchmark.Label} no finalizo a tiempo.");
+            }
+
+            var registro = await benchmarkTask;
+            var currentUser = SessionService.CurrentUser;
+            if (currentUser == null)
+            {
+                return registro;
+            }
+
+            try
+            {
+                registro.UserId = currentUser.Id;
+
+                using var db = new CoreCareDbContext();
+                db.RegistrosBenchmark.Add(registro);
+                db.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                var detail = ex.GetBaseException().Message;
+                MessageBox.Show(
+                    $"El benchmark {selectedBenchmark.Label} se ejecutó y se incluirá en el informe, pero no se pudo guardar en el historial.\n\nDetalle: {detail}",
+                    "Benchmark no guardado",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+
+            return registro;
+        }
+
         private SystemTelemetryMock BuildReportTelemetry(SystemSpecs systemSpecs, System.Collections.Generic.List<string> telemetryWarnings)
         {
-                float ramUsed = (float)Math.Round(_hardwareService.GetRamUsageGb(), 1);
-                float ramAvailable = (float)Math.Round(_hardwareService.GetRamAvailableGb(), 1);
-                float ramTotal = (float)Math.Round(ramUsed + ramAvailable, 1);
+            float ramUsed = (float)Math.Round(_hardwareService.GetRamUsageGb(), 1);
+            float ramAvailable = (float)Math.Round(_hardwareService.GetRamAvailableGb(), 1);
+            float ramTotal = (float)Math.Round(ramUsed + ramAvailable, 1);
 
-                var cpuTemperature = -1f;
-                if (_hardwareService.TryGetCpuTemperature(out var cpuTemperatureData, out var cpuTemperatureReason))
-                {
-                    cpuTemperature = (float)Math.Round(cpuTemperatureData.Value, 1, MidpointRounding.ToEven);
-                }
-                else
-                {
-                    telemetryWarnings.Add($"Temperatura CPU no disponible: {cpuTemperatureReason}");
-                }
+            var cpuTemperature = -1f;
+            if (_hardwareService.TryGetCpuTemperature(out var cpuTemperatureData, out var cpuTemperatureReason))
+            {
+                cpuTemperature = (float)Math.Round(cpuTemperatureData.Value, 1, MidpointRounding.ToEven);
+            }
+            else
+            {
+                telemetryWarnings.Add($"Temperatura CPU no disponible: {cpuTemperatureReason}");
+            }
 
-                var diskUsagePercent = -1f;
-                if (_hardwareService.TryGetDiskLoad(out var diskLoad, out var diskLoadReason))
-                {
-                    diskUsagePercent = (float)Math.Round(diskLoad, 1, MidpointRounding.ToEven);
-                }
-                else
-                {
-                    telemetryWarnings.Add($"Uso de disco no disponible: {diskLoadReason}");
-                }
+            var diskUsagePercent = -1f;
+            if (_hardwareService.TryGetDiskLoad(out var diskLoad, out var diskLoadReason))
+            {
+                diskUsagePercent = (float)Math.Round(diskLoad, 1, MidpointRounding.ToEven);
+            }
+            else
+            {
+                telemetryWarnings.Add($"Uso de disco no disponible: {diskLoadReason}");
+            }
 
-                return new SystemTelemetryMock
-                {
-                    CpuUsagePercent = (float)Math.Round(_hardwareService.GetCpuLoad(), 1, MidpointRounding.ToEven),
-                    CpuTemperatureC = cpuTemperature,
-                    GpuUsagePercent = (float)Math.Round(_hardwareService.GetGpuLoad(), 1, MidpointRounding.ToEven),
-                    GpuTemperatureC = (float)Math.Round(_hardwareService.GetGpuTemperature(), 1, MidpointRounding.ToEven),
-                    RamTotalGb = ramTotal,
-                    RamUsedGb = ramUsed,
-                    DiskType = systemSpecs.DiskModel,
-                    DiskUsagePercent = diskUsagePercent,
-                };
+            return new SystemTelemetryMock
+            {
+                CpuUsagePercent = (float)Math.Round(_hardwareService.GetCpuLoad(), 1, MidpointRounding.ToEven),
+                CpuTemperatureC = cpuTemperature,
+                GpuUsagePercent = (float)Math.Round(_hardwareService.GetGpuLoad(), 1, MidpointRounding.ToEven),
+                GpuTemperatureC = (float)Math.Round(_hardwareService.GetGpuTemperature(), 1, MidpointRounding.ToEven),
+                RamTotalGb = ramTotal,
+                RamUsedGb = ramUsed,
+                DiskType = systemSpecs.DiskModel,
+                DiskUsagePercent = diskUsagePercent,
+            };
         }
 
         private async Task<(System.Collections.Generic.List<string> Recommendations, bool GeneratedLocally)> GetFastRecommendationsAsync(SystemTelemetryMock telemetryData, SystemSpecs systemSpecs)
@@ -535,6 +697,16 @@ namespace CoreCare.ViewModels
 [GPU]
 - Problema: La GPU muestra carga o temperatura elevada.
 - Solución: Revisar drivers, ventilación y aplicaciones con aceleración gráfica activa.
+- Coste: Bajo
+- Impacto: Medio");
+            }
+
+            if (recommendations.Count == 0)
+            {
+                recommendations.Add($@"=== NOTAS ADICIONALES ===
+[Estado general]
+- Problema: No se detectan cargas, temperaturas o uso de memoria/disco por encima de los umbrales de alerta con la telemetría disponible.
+- Solución: Mantener limpieza física, revisar actualizaciones de drivers y repetir el informe tras ejecutar benchmarks si se quiere evaluar el rendimiento bajo carga.
 - Coste: Bajo
 - Impacto: Medio");
             }
@@ -608,19 +780,15 @@ namespace CoreCare.ViewModels
                 var trend = historyService.BuildTrend(history);
                 TrendStatus = BuildTrendStatus(trend);
 
-                // limit to last 10 runs for charts, then restore chronological order
                 var subset = history
                     .Take(10)
                     .OrderBy(h => h.Timestamp)
                     .ToList();
                 LastHistorySubset = subset;
 
-                // build chart models from subset
                 TrendPlotModel = BuildTrendPlotModel(subset);
                 ScoreBarPlotModel = BuildScoreBarPlotModel(subset);
 
-                // build new layout: KPIs, mini charts, heatmap
-                // Build heatmap FIRST so data is ready when MiniCpuPlot PropertyChanged triggers DrawHeatmap
                 BuildHeatmap(subset);
                 BuildKPIs(subset);
                 BuildMiniCharts(subset);
@@ -658,238 +826,7 @@ namespace CoreCare.ViewModels
             detailsWindow.ShowDialog();
         }
 
-        [RelayCommand]
-        private void StartNewSupportChat()
-        {
-            IsCreatingSupportChat = true;
-            NewSupportQuestion = string.Empty;
-            SupportChatStatus = "Escribe tu consulta y pulsa Enviar pregunta.";
-        }
-
-        [RelayCommand]
-        private void SendSupportMessage()
-        {
-            if (SessionService.CurrentUser == null || !CanSendSupportMessage)
-            {
-                return;
-            }
-
-            var question = NewSupportQuestion.Trim();
-            if (string.IsNullOrWhiteSpace(question))
-            {
-                return;
-            }
-
-            try
-            {
-                using var db = new CoreCareDbContext();
-                var currentUser = SessionService.CurrentUser;
-                Chat chat;
-
-                if (IsCreatingSupportChat || SelectedSupportChat == null)
-                {
-                    chat = new Chat
-                    {
-                        ClientId = currentUser!.Id,
-                        Subject = BuildSupportChatSubject(question),
-                        Status = ChatStatus.Abierto,
-                        CreatedAt = DateTime.UtcNow
-                    };
-
-                    db.Chats.Add(chat);
-                    db.SaveChanges();
-
-                    SelectedSupportChat = new SupportChatItemViewModel
-                    {
-                        Id = chat.Id,
-                        Subject = chat.Subject,
-                        Preview = question,
-                        StatusLabel = "Abierto",
-                        IsOpen = true,
-                        HasPendingReply = false,
-                        CreatedAt = chat.CreatedAt,
-                        LastMessageAt = chat.CreatedAt
-                    };
-                }
-                else
-                {
-                    chat = db.Chats.FirstOrDefault(c => c.Id == SelectedSupportChat.Id && c.ClientId == currentUser!.Id)
-                           ?? throw new InvalidOperationException("No se pudo localizar el chat seleccionado.");
-
-                    if (chat.Status != ChatStatus.Abierto)
-                    {
-                        SupportChatStatus = "Este chat ya está cerrado. Abre una nueva consulta para continuar.";
-                        return;
-                    }
-                }
-
-                db.ChatMessages.Add(new ChatMessage
-                {
-                    ChatId = chat.Id,
-                    SenderId = currentUser!.Id,
-                    Message = question,
-                    SentAt = DateTime.UtcNow
-                });
-                db.SaveChanges();
-
-                IsCreatingSupportChat = false;
-                NewSupportQuestion = string.Empty;
-
-                LoadSupportChats();
-                SelectedSupportChat = SupportChats.FirstOrDefault(chatItem => chatItem.Id == chat.Id) ?? SelectedSupportChat;
-                LoadSelectedSupportChatMessages();
-                SupportChatStatus = $"Consulta enviada en el chat #{chat.Id}.";
-            }
-            catch (Exception ex)
-            {
-                SupportChatStatus = $"No se pudo enviar la consulta: {ex.GetBaseException().Message}";
-            }
-        }
-
-        private void RefreshSupportChats()
-        {
-            if (!IsAuthenticated || SessionService.CurrentUser == null)
-            {
-                return;
-            }
-
-            var selectedId = SelectedSupportChat?.Id;
-            var wasCreating = IsCreatingSupportChat;
-            LoadSupportChats();
-
-            if (selectedId.HasValue)
-            {
-                SelectedSupportChat = SupportChats.FirstOrDefault(chat => chat.Id == selectedId.Value);
-                if (SelectedSupportChat != null)
-                {
-                    LoadSelectedSupportChatMessages();
-                }
-            }
-            else if (wasCreating)
-            {
-                IsCreatingSupportChat = true;
-            }
-        }
-
-        private void LoadSupportChats()
-        {
-            try
-            {
-                using var db = new CoreCareDbContext();
-                var currentUser = SessionService.CurrentUser;
-
-                SupportChats.Clear();
-
-                if (currentUser == null)
-                {
-                    return;
-                }
-
-                var chats = db.Chats
-                    .Include(chat => chat.Messages)
-                        .ThenInclude(message => message.Sender)
-                    .Where(chat => chat.ClientId == currentUser.Id)
-                    .OrderByDescending(chat => chat.CreatedAt)
-                    .ToList();
-
-                foreach (var chat in chats)
-                {
-                    var orderedMessages = chat.Messages.OrderBy(message => message.SentAt).ToList();
-                    var lastMessage = orderedMessages.LastOrDefault();
-                    var preview = lastMessage?.Message ?? "Sin mensajes todavía.";
-                    if (preview.Length > 60)
-                    {
-                        preview = preview[..60] + "...";
-                    }
-
-                    var hasPendingReply = chat.Status == ChatStatus.Abierto
-                        && lastMessage != null
-                        && lastMessage.SenderId != currentUser.Id;
-
-                    SupportChats.Add(new SupportChatItemViewModel
-                    {
-                        Id = chat.Id,
-                        Subject = string.IsNullOrWhiteSpace(chat.Subject) ? $"Consulta #{chat.Id}" : chat.Subject,
-                        Preview = preview,
-                        StatusLabel = chat.Status == ChatStatus.Abierto ? "Abierto" : "Cerrado",
-                        IsOpen = chat.Status == ChatStatus.Abierto,
-                        HasPendingReply = hasPendingReply,
-                        CreatedAt = chat.CreatedAt,
-                        LastMessageAt = lastMessage?.SentAt
-                    });
-                }
-
-                if (SelectedSupportChat != null)
-                {
-                    SelectedSupportChat = SupportChats.FirstOrDefault(chat => chat.Id == SelectedSupportChat.Id) ?? SelectedSupportChat;
-                }
-
-                if (SupportChats.Count == 0)
-                {
-                    SupportChatStatus = "Todavía no has abierto chats de soporte.";
-                }
-            }
-            catch (Exception ex)
-            {
-                SupportChatStatus = $"No se pudieron cargar los chats: {ex.GetBaseException().Message}";
-            }
-        }
-
-        private void LoadSelectedSupportChatMessages()
-        {
-            if (SessionService.CurrentUser == null || SelectedSupportChat == null)
-            {
-                SelectedSupportChatMessages.Clear();
-                return;
-            }
-
-            try
-            {
-                using var db = new CoreCareDbContext();
-
-                var chat = db.Chats
-                    .Include(c => c.Messages)
-                        .ThenInclude(m => m.Sender)
-                    .FirstOrDefault(c => c.Id == SelectedSupportChat.Id && c.ClientId == SessionService.CurrentUser.Id);
-
-                SelectedSupportChatMessages.Clear();
-
-                if (chat == null)
-                {
-                    return;
-                }
-
-                foreach (var message in chat.Messages.OrderBy(message => message.SentAt))
-                {
-                    SelectedSupportChatMessages.Add(new SupportChatMessageViewModel
-                    {
-                        SenderName = message.SenderId == SessionService.CurrentUser.Id
-                            ? "Tú"
-                            : message.Sender?.username ?? message.Sender?.name ?? "Administrador",
-                        Message = message.Message,
-                        SentAt = message.SentAt,
-                        IsMine = message.SenderId == SessionService.CurrentUser.Id
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                SupportChatStatus = $"No se pudo abrir el chat: {ex.GetBaseException().Message}";
-            }
-        }
-
-        private static string BuildSupportChatSubject(string question)
-        {
-            var subject = question.Trim();
-            if (subject.Length > 60)
-            {
-                subject = subject[..60] + "...";
-            }
-
-            return subject;
-        }
-
-        private static string BuildTrendStatus(IReadOnlyList<BenchmarkTrendPoint> trend)
+        private static string BuildTrendStatus(System.Collections.Generic.IReadOnlyList<BenchmarkTrendPoint> trend)
         {
             if (trend.Count < 2)
             {
@@ -985,7 +922,7 @@ namespace CoreCare.ViewModels
             public required string Label { get; set; }
         }
 
-        private PlotModel BuildTrendPlotModel(IReadOnlyCollection<RegistroBenchmark> history)
+        private PlotModel BuildTrendPlotModel(System.Collections.Generic.IReadOnlyCollection<RegistroBenchmark> history)
         {
             var model = new PlotModel { Title = "Tendencias por métrica" };
 
@@ -1017,7 +954,6 @@ namespace CoreCare.ViewModels
             var ramSeries = new LineSeries { Title = "RAM %", Color = OxyColors.MediumSeaGreen, StrokeThickness = 2 };
             var diskSeries = new LineSeries { Title = "Disco %", Color = OxyColors.PaleVioletRed, StrokeThickness = 2 };
 
-            // assume 'history' is already ordered and limited
             foreach (var r in history)
             {
                 double x = DateTimeAxis.ToDouble(r.Timestamp);
@@ -1032,7 +968,6 @@ namespace CoreCare.ViewModels
             model.Series.Add(ramSeries);
             model.Series.Add(diskSeries);
 
-            // show trackers on hover with a concise format
             cpuSeries.TrackerFormatString = "{0}\n{1:yyyy-MM-dd}: CPU={2:0.0}%";
             gpuSeries.TrackerFormatString = "{0}\n{1:yyyy-MM-dd}: GPU={2:0.0}%";
             ramSeries.TrackerFormatString = "{0}\n{1:yyyy-MM-dd}: RAM={2:0.0}%";
@@ -1041,7 +976,7 @@ namespace CoreCare.ViewModels
             return model;
         }
 
-        private PlotModel BuildScoreBarPlotModel(IReadOnlyCollection<RegistroBenchmark> history)
+        private PlotModel BuildScoreBarPlotModel(System.Collections.Generic.IReadOnlyCollection<RegistroBenchmark> history)
         {
             var model = new PlotModel { Title = "Score por ejecución" };
 
@@ -1055,17 +990,15 @@ namespace CoreCare.ViewModels
             {
                 categoryAxis.Labels.Add(r.Timestamp.ToString("yyyy-MM-dd"));
 
-                // color by performance tier
                 OxyColor color;
-                if (r.Score >= 7.5f) color = OxyColor.FromRgb(34, 197, 94); // green
-                else if (r.Score >= 5f) color = OxyColor.FromRgb(234, 179, 8); // yellow
-                else color = OxyColor.FromRgb(220, 38, 38); // red
+                if (r.Score >= 7.5f) color = OxyColor.FromRgb(34, 197, 94);
+                else if (r.Score >= 5f) color = OxyColor.FromRgb(234, 179, 8);
+                else color = OxyColor.FromRgb(220, 38, 38);
 
                 var item = new BarItem(r.Score) { Color = color };
                 columnSeries.Items.Add(item);
             }
 
-            // For horizontal bars, swap axes: category on left, value at bottom
             var categoryAxisLeft = new CategoryAxis { Position = AxisPosition.Left };
             foreach (var lbl in categoryAxis.Labels) categoryAxisLeft.Labels.Add(lbl);
             var valueAxisBottom = new LinearAxis { Position = AxisPosition.Bottom, Minimum = 0, Maximum = 10, Title = "Score (0-10)" };
@@ -1077,7 +1010,7 @@ namespace CoreCare.ViewModels
             return model;
         }
 
-        private void BuildKPIs(IReadOnlyCollection<RegistroBenchmark> history)
+        private void BuildKPIs(System.Collections.Generic.IReadOnlyCollection<RegistroBenchmark> history)
         {
             if (history.Count == 0)
             {
@@ -1090,16 +1023,13 @@ namespace CoreCare.ViewModels
 
             var ordered = history.OrderBy(h => h.Timestamp).ToList();
 
-            // Current score: last run
             var lastRun = ordered.Last();
             KpiCurrentScore = $"{lastRun.Score:F1} / 10";
 
-            // Degradation: first vs last
             var firstRun = ordered.First();
             float degradationPercent = firstRun.Score > 0 ? ((lastRun.Score - firstRun.Score) / firstRun.Score) * 100 : 0;
             KpiDegradation = $"{degradationPercent:+0.0;-0.0}%";
 
-            // Worst component: which metric has largest variance or drop
             var cpuVar = ordered.Select(h => h.CpuLoad).DefaultIfEmpty(0).ToList();
             var gpuVar = ordered.Select(h => h.GpuLoad).DefaultIfEmpty(0).ToList();
             var ramVar = ordered.Select(h => h.RamLoad).DefaultIfEmpty(0).ToList();
@@ -1113,7 +1043,6 @@ namespace CoreCare.ViewModels
             var components = new[] { ("CPU", cpuSD), ("GPU", gpuSD), ("RAM", ramSD), ("Disk", diskSD) };
             KpiWorstComponent = components.OrderByDescending(x => x.Item2).First().Item1;
 
-            // Consistency: inverse of coefficient of variation
             var scores = ordered.Select(h => (double)h.Score).ToList();
             var mean = scores.Average();
             var stdev = StandardDeviation(scores);
@@ -1121,7 +1050,7 @@ namespace CoreCare.ViewModels
             KpiConsistency = $"{consistency:F0}%";
         }
 
-        private void BuildMiniCharts(IReadOnlyCollection<RegistroBenchmark> history)
+        private void BuildMiniCharts(System.Collections.Generic.IReadOnlyCollection<RegistroBenchmark> history)
         {
             if (history.Count == 0)
             {
@@ -1142,7 +1071,7 @@ namespace CoreCare.ViewModels
             MiniDiskPlot = BuildMiniPlot("Disk %", ordered.Select(h => (double)h.DiskLoad).ToList(), runLabels, OxyColors.Gold, OxyColor.FromArgb(40, 218, 113, 1));
         }
 
-        private PlotModel BuildMiniPlot(string title, List<double> values, List<string> runLabels, OxyColor lineColor, OxyColor fillColor)
+        private PlotModel BuildMiniPlot(string title, System.Collections.Generic.List<double> values, System.Collections.Generic.List<string> runLabels, OxyColor lineColor, OxyColor fillColor)
         {
             var model = new PlotModel { Title = title, TitleFontSize = 12 };
             var categoryAxis = new CategoryAxis
@@ -1179,7 +1108,7 @@ namespace CoreCare.ViewModels
             return model;
         }
 
-        private void BuildHeatmap(IReadOnlyCollection<RegistroBenchmark> history)
+        private void BuildHeatmap(System.Collections.Generic.IReadOnlyCollection<RegistroBenchmark> history)
         {
             HeatmapData.Clear();
 
@@ -1202,7 +1131,7 @@ namespace CoreCare.ViewModels
             HeatmapData.Add(("Disk", diskValues));
         }
 
-        private static double StandardDeviation(IReadOnlyList<double> values)
+        private static double StandardDeviation(System.Collections.Generic.IReadOnlyList<double> values)
         {
             if (values.Count < 2) return 0;
             double mean = values.Average();
@@ -1210,7 +1139,7 @@ namespace CoreCare.ViewModels
             return Math.Sqrt(sumSquaredDiff / values.Count);
         }
 
-        private static double VarianceDouble(IReadOnlyList<float> values)
+        private static double VarianceDouble(System.Collections.Generic.IReadOnlyList<float> values)
         {
             if (values.Count < 2) return 0;
             var doubleValues = values.Select(v => (double)v).ToList();

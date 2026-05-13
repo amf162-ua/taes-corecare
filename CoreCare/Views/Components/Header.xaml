@@ -51,9 +51,11 @@
             <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left">
                 <TextBlock Text="CORE CARE" Foreground="#0E2F33" FontSize="20" FontWeight="Black" VerticalAlignment="Center" Margin="0,0,30,0"/>
 
-                <Button Content="Inicio" Click="BtnHome_Click" Style="{StaticResource TopNavButtonStyle}" Foreground="#000000"/>
-                <Button Content="Benchmarks" Click="BtnBenchmarks_Click" Style="{StaticResource TopNavButtonStyle}" Foreground="#000000"/>
-                <Button Content="Historial" Click="BtnHistory_Click" Style="{StaticResource TopNavButtonStyle}" Foreground="#000000"/>
+                <Button Content="Inicio" Click="BtnHome_Click" Foreground="White" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="5,0" FontSize="14" FontWeight="SemiBold"/>
+                <Button Content="Benchmarks" Click="BtnBenchmarks_Click" Foreground="White" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="5,0" FontSize="14" FontWeight="SemiBold"/>
+                <Button Content="Historial" Click="BtnHistory_Click" Foreground="White" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="5,0" FontSize="14" FontWeight="SemiBold"/>
+                <Button x:Name="BtnSupport" Content="💬 Soporte" Click="BtnSupport_Click" Foreground="White" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="5,0" FontSize="14" FontWeight="SemiBold" Visibility="Collapsed"/>
+                <Button Content="Arranque" Click="BtnArranque_Click" Foreground="#00E5FF" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="5,0" FontSize="14" FontWeight="SemiBold"/>
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">

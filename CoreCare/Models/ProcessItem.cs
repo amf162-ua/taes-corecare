@@ -12,5 +12,6 @@ namespace CoreCare.Models
         public double RamUsageMB { get; set; }
         public double CpuUsagePercent { get; set; }
         public bool IsHighConsumption => CpuUsagePercent > 15 || RamUsageMB > 500;
+        public bool IsCritical { get; set; } = false;
     }
 }

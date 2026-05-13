@@ -12,14 +12,11 @@ namespace CoreCare.Converters
         {
             if (value is TipoPlan plan)
             {
-                return plan switch
-                {
-                    TipoPlan.Premium => new SolidColorBrush(Color.FromArgb(255, 255, 215, 0)), // Gold
-                    TipoPlan.Basico => new SolidColorBrush(Color.FromArgb(255, 144, 144, 144)), // Gray
-                    _ => new SolidColorBrush(Color.FromArgb(255, 128, 128, 128)) // Gray
-                };
+                return plan == TipoPlan.Premium
+                    ? (Brush)new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFA500"))  // Orange
+                    : (Brush)new SolidColorBrush((Color)ColorConverter.ConvertFromString("#717182")); // Muted
             }
-            return new SolidColorBrush(Colors.Gray);
+            return new SolidColorBrush((Color)ColorConverter.ConvertFromString("#717182")); // Muted
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

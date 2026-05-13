@@ -10,10 +10,27 @@ namespace CoreCare.Services
             identifier = identifier.Trim();
 
             using var db = new CoreCareDbContext();
-            return db.Users.FirstOrDefault(user =>
-                user.IsActive &&
-                user.password == password &&
-                (user.username == identifier || user.email == identifier));
+
+            // Buscar usuario por identificador (username o email) y comprobar contraseña
+            var user = db.Users.FirstOrDefault(u => u.IsActive && (u.username == identifier || u.email == identifier));
+            if (user == null) return null;
+
+            // Verificar hash de contraseña (los usuarios seeders usan BCrypt)
+            try
+            {
+                if (BCrypt.Net.BCrypt.Verify(password, user.password))
+                {
+                    return user;
+                }
+            }
+            catch
+            {
+                // Si la verificación falla por formato (p.ej. contraseña en texto plano),
+                // hacer una comparación segura como fallback.
+                if (user.password == password) return user;
+            }
+
+            return null;
         }
 
         public User RegisterClient(string name, string username, string email, string password)
@@ -39,12 +56,15 @@ namespace CoreCare.Services
                 throw new InvalidOperationException("Ya existe un usuario con ese correo.");
             }
 
+            // Hash de la contraseña antes de persistir
+            var passwordHash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 12);
+
             var user = new User
             {
                 name = name,
                 username = username,
                 email = email,
-                password = password,
+                password = passwordHash,
                 Role = UserRole.Cliente,
                 createdAt = DateTime.UtcNow,
                 IsActive = true,
