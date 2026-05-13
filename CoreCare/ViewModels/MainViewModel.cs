@@ -16,6 +16,7 @@ using QuestPDF.Fluent;
 using System.Linq;
 using System.Windows.Media;
 using System.Text;
+using CoreCare.Views.Modals;
 
 namespace CoreCare.ViewModels
 {
@@ -301,6 +302,19 @@ namespace CoreCare.ViewModels
                 return;
             }
 
+            var benchmarkSelectionWindow = new ReportBenchmarkSelectionWindow
+            {
+                Owner = Application.Current?.MainWindow,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+
+            if (benchmarkSelectionWindow.ShowDialog() != true)
+            {
+                return;
+            }
+
+            var selectedReportBenchmarks = benchmarkSelectionWindow.SelectedBenchmarks.ToList();
+
             var saveDialog = new Microsoft.Win32.SaveFileDialog
             {
                 FileName = $"Informe_CoreCare_{DateTime.Now:yyyyMMdd_HHmmss}",
@@ -315,9 +329,16 @@ namespace CoreCare.ViewModels
 
             LoadingWindow? loadingWindow = null;
             IsBusy = true;
+            var wasRefreshTimerEnabled = _refreshTimer.IsEnabled;
+            var reportBenchmarkResults = new System.Collections.Generic.List<RegistroBenchmark>();
 
             try
             {
+                if (wasRefreshTimerEnabled)
+                {
+                    _refreshTimer.Stop();
+                }
+
                 loadingWindow = new LoadingWindow
                 {
                     Owner = Application.Current?.MainWindow,
@@ -325,7 +346,21 @@ namespace CoreCare.ViewModels
                 };
                 loadingWindow.Show();
 
-                loadingWindow.UpdateProgress(0, "Preparando informe...");
+                if (selectedReportBenchmarks.Count > 0)
+                {
+                    for (int i = 0; i < selectedReportBenchmarks.Count; i++)
+                    {
+                        var selectedBenchmark = selectedReportBenchmarks[i];
+                        var percent = 5 + (int)Math.Round((double)i / selectedReportBenchmarks.Count * 30);
+                        loadingWindow.UpdateProgress(percent, $"Ejecutando benchmark {selectedBenchmark.Label} ({i + 1}/{selectedReportBenchmarks.Count})...");
+                        var registro = await RunAndSaveReportBenchmarkAsync(selectedBenchmark);
+                        reportBenchmarkResults.Add(registro);
+                    }
+
+                    LoadHistory();
+                }
+
+                loadingWindow.UpdateProgress(selectedReportBenchmarks.Count > 0 ? 35 : 0, "Preparando informe...");
 
                 var hardwareTask = Task.Run(() =>
                 {
@@ -336,14 +371,14 @@ namespace CoreCare.ViewModels
 
                 await Task.WhenAll(hardwareTask, specsTask);
 
-                loadingWindow.UpdateProgress(25, "Analizando telemetría...");
+                loadingWindow.UpdateProgress(selectedReportBenchmarks.Count > 0 ? 50 : 25, "Analizando telemetría...");
 
                 var systemSpecs = specsTask.Result;
                 var telemetryWarnings = new System.Collections.Generic.List<string>();
                 var telemetryData = BuildReportTelemetry(systemSpecs, telemetryWarnings);
                 var (upgradeScores, upgradeRecommendations) = _upgradeAdvisorService.Analyze(systemSpecs, telemetryData);
 
-                loadingWindow.UpdateProgress(45, "Preparando recomendaciones...");
+                loadingWindow.UpdateProgress(selectedReportBenchmarks.Count > 0 ? 65 : 45, "Preparando recomendaciones...");
 
                 var (recommendations, generatedLocally) = await GetFastRecommendationsAsync(telemetryData, systemSpecs);
 
@@ -360,6 +395,7 @@ namespace CoreCare.ViewModels
                     RecommendationsGeneratedLocally = generatedLocally,
                     UpgradeScores = upgradeScores,
                     UpgradeRecommendations = upgradeRecommendations,
+                    BenchmarkResults = reportBenchmarkResults,
                     TelemetryData = telemetryData,
                     Sponsors = GetFixedSponsors()
                 };
@@ -379,8 +415,58 @@ namespace CoreCare.ViewModels
             finally
             {
                 loadingWindow?.Close();
+                if (wasRefreshTimerEnabled)
+                {
+                    _refreshTimer.Start();
+                    UpdateAllData();
+                }
+
                 IsBusy = false;
             }
+        }
+
+        private async Task<RegistroBenchmark> RunAndSaveReportBenchmarkAsync(ReportBenchmarkSelectionItem selectedBenchmark)
+        {
+            var stressWorker = new StressWorker();
+            var orchestrator = new BenchmarkOrchestrator(_hardwareService, stressWorker);
+            var options = MapBenchmarkOption(selectedBenchmark.Code);
+
+            var benchmarkTask = orchestrator.RunBenchmarkAsync(options, selectedBenchmark.DurationSeconds);
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(selectedBenchmark.DurationSeconds + 20));
+
+            var completedTask = await Task.WhenAny(benchmarkTask, timeoutTask);
+            if (completedTask != benchmarkTask)
+            {
+                stressWorker.Stop();
+                throw new TimeoutException($"El benchmark {selectedBenchmark.Label} no finalizo a tiempo.");
+            }
+
+            var registro = await benchmarkTask;
+            var currentUser = SessionService.CurrentUser;
+            if (currentUser == null)
+            {
+                return registro;
+            }
+
+            try
+            {
+                registro.UserId = currentUser.Id;
+
+                using var db = new CoreCareDbContext();
+                db.RegistrosBenchmark.Add(registro);
+                db.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                var detail = ex.GetBaseException().Message;
+                MessageBox.Show(
+                    $"El benchmark {selectedBenchmark.Label} se ejecutó y se incluirá en el informe, pero no se pudo guardar en el historial.\n\nDetalle: {detail}",
+                    "Benchmark no guardado",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+
+            return registro;
         }
 
         private SystemTelemetryMock BuildReportTelemetry(SystemSpecs systemSpecs, System.Collections.Generic.List<string> telemetryWarnings)

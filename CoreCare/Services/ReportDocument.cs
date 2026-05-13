@@ -102,6 +102,11 @@ namespace CoreCare.Services
 
                 column.Item().Element(c => ComposeSection(c, "Especificaciones del sistema", ComposeSpecs));
                 column.Item().Element(c => ComposeSection(c, "Telemetría actual", ComposeTelemetryTable));
+                if (_data.BenchmarkResults.Count > 0)
+                {
+                    column.Item().Element(c => ComposeSection(c, "Benchmarks ejecutados", ComposeBenchmarkResults));
+                }
+
                 column.Item().Element(c => ComposeSection(c, "Recomendaciones de IA", ComposeRecommendations));
                 column.Item().Element(c => ComposeSection(c, "Mejoras de hardware sugeridas", ComposeUpgradeAdvice));
 
@@ -188,6 +193,105 @@ namespace CoreCare.Services
                 AddTelemetryRow(table, "Uso GPU", FormatPercent(_data.TelemetryData.GpuUsagePercent), "Temperatura GPU", FormatMetric(_data.TelemetryData.GpuTemperatureC, "C"));
                 AddTelemetryRow(table, "RAM", $"{_data.TelemetryData.RamUsedGb:F1} / {_data.TelemetryData.RamTotalGb:F1} GB", "Uso de disco", FormatMetric(_data.TelemetryData.DiskUsagePercent, "%"));
             });
+        }
+
+        private void ComposeBenchmarkResults(IContainer container)
+        {
+            container.Column(column =>
+            {
+                column.Spacing(10);
+
+                foreach (var benchmark in _data.BenchmarkResults.OrderBy(result => result.Timestamp))
+                {
+                    column.Item().Background(Surface).Border(1).BorderColor(Border).Padding(10).Column(card =>
+                    {
+                        card.Spacing(8);
+                        card.Item().Row(row =>
+                        {
+                            row.RelativeItem().Column(header =>
+                            {
+                                header.Spacing(2);
+                                header.Item().Text(benchmark.BenchmarkTypeLabel).FontSize(11).SemiBold().FontColor(Ink);
+                                header.Item().Text(benchmark.Timestamp.ToString("dd/MM/yyyy HH:mm:ss")).FontSize(8).FontColor(Muted);
+                            });
+
+                            row.AutoItem().Text($"{benchmark.Score:F1}/10")
+                                .FontSize(11)
+                                .SemiBold()
+                                .FontColor(ScoreColor(benchmark.Score));
+                        });
+
+                        card.Item().Element(c => ComposeBenchmarkMetricTable(c, benchmark));
+
+                        var unavailableReadings = benchmark.SensorReadings
+                            .Where(reading => reading.Name.Contains("NO DISPONIBLE", StringComparison.OrdinalIgnoreCase))
+                            .Select(reading => reading.Name)
+                            .Distinct()
+                            .ToList();
+
+                        foreach (var unavailable in unavailableReadings)
+                        {
+                            card.Item().Element(c => ComposeTechnicalNote(c, $"Sensor no disponible durante el benchmark: {unavailable}"));
+                        }
+                    });
+                }
+            });
+        }
+
+        private static void ComposeBenchmarkMetricTable(IContainer container, RegistroBenchmark benchmark)
+        {
+            container.Table(table =>
+            {
+                table.ColumnsDefinition(columns =>
+                {
+                    columns.RelativeColumn();
+                    columns.RelativeColumn();
+                    columns.RelativeColumn();
+                    columns.RelativeColumn();
+                });
+
+                table.Header(header =>
+                {
+                    AddHeaderCell(header, "Componente");
+                    AddHeaderCell(header, "Métrica 1");
+                    AddHeaderCell(header, "Métrica 2");
+                    AddHeaderCell(header, "Métrica 3");
+                });
+
+                var components = benchmark.ComponentsScanned;
+                if (components.Contains(ComponentType.Cpu))
+                {
+                    AddBenchmarkMetricRow(table, "CPU", FormatPercent(benchmark.CpuLoad), FormatMetric(benchmark.CpuTemp, "C"), $"{benchmark.CpuClock:F2} GHz");
+                }
+
+                if (components.Contains(ComponentType.Gpu))
+                {
+                    AddBenchmarkMetricRow(table, "GPU", FormatPercent(benchmark.GpuLoad), FormatMetric(benchmark.GpuTemp, "C"), "N/A");
+                }
+
+                if (components.Contains(ComponentType.Ram))
+                {
+                    AddBenchmarkMetricRow(table, "RAM", FormatMetric(benchmark.RamUsed, "GB"), FormatPercent(benchmark.RamLoad), "N/A");
+                }
+
+                if (components.Contains(ComponentType.Disk))
+                {
+                    AddBenchmarkMetricRow(table, "Disco", FormatPercent(benchmark.DiskLoad), $"{benchmark.DiskReadRate:F2} Mb/s lectura", $"{benchmark.DiskWriteRate:F2} Mb/s escritura");
+                }
+
+                if (components.Count == 0)
+                {
+                    AddBenchmarkMetricRow(table, "Benchmark", "Sin sensores asociados", "N/A", "N/A");
+                }
+            });
+        }
+
+        private static void AddBenchmarkMetricRow(TableDescriptor table, string component, string metricA, string metricB, string metricC)
+        {
+            AddLabelCell(table, component);
+            AddValueCell(table, metricA);
+            AddValueCell(table, metricB);
+            AddValueCell(table, metricC);
         }
 
         private static void AddTelemetryRow(TableDescriptor table, string labelA, string valueA, string labelB, string valueB)

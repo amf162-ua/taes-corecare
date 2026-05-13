@@ -27,6 +27,8 @@ namespace CoreCare.Models
 
         public List<UpgradeRecommendation> UpgradeRecommendations { get; set; } = new();
 
+        public List<RegistroBenchmark> BenchmarkResults { get; set; } = new();
+
         public List<Sponsor> Sponsors { get; set; } = new();
     }
 }
